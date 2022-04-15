@@ -9,8 +9,7 @@
 //-------------------------------------------------------------------
 
 pub mod messages;
-pub mod server;
+mod server;
 pub mod session;
 pub use messages::*;
-pub use server::*;
 pub use session::*;

@@ -49,3 +49,30 @@ impl Handler<ToProxyServer> for ProxyServer {
         }
     }
 }
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[actix_rt::test]
+    async fn new_session() {
+        let addr = ProxyServer::default().start();
+        let counter = addr.send(ToProxyServer::OnlineCounter).await.unwrap();
+        assert_eq!(counter, ProxyServerReply::OnlineCounter(0));
+        let id = addr
+            .send(ToProxyServer::Connect(addr.clone().recipient()))
+            .await
+            .unwrap();
+        match id {
+            ProxyServerReply::Id(id) => {
+                let counter = addr.send(ToProxyServer::OnlineCounter).await.unwrap();
+                assert_eq!(counter, ProxyServerReply::OnlineCounter(1));
+                let rs = addr.send(ToProxyServer::DisConnect(id)).await.unwrap();
+                assert_eq!(rs, ProxyServerReply::Ok);
+                let counter = addr.send(ToProxyServer::OnlineCounter).await.unwrap();
+                assert_eq!(counter, ProxyServerReply::OnlineCounter(0));
+            }
+            e => {
+                panic!("{:?}", e);
+            }
+        }
+    }
+}
