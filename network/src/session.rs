@@ -32,23 +32,14 @@ impl Actor for VisitorSession {
         trace!("id = {}, Stopped", self.id);
     }
 }
-impl Handler<Ping> for VisitorSession {
-    type Result = MessageResult<Ping>;
-    fn handle(&mut self, _ping: Ping, _ctx: &mut Context<Self>) -> Self::Result{
-        trace!("id = {}, Ping", self.id);
-        MessageResult(Pong)
-    }
-}
-impl Handler<StopSession> for VisitorSession{
-    type Result = ();
-    fn handle(&mut self, _: StopSession, ctx: &mut Context<Self>) -> Self::Result{
-        trace!("id = {}, StopSession", self.id);
-        ctx.stop(); 
-    }
-}
-impl Handler<GetSessionMeta> for VisitorSession{
-    type Result = MessageResult<GetSessionMeta>;
-    fn handle(&mut self, _: GetSessionMeta, _ctx: &mut Context<Self>) -> Self::Result{
-        MessageResult(SessionMeta(self.id))
+impl Handler<ToSession> for VisitorSession {
+    type Result = MessageResult<ToSession>;
+    fn handle(&mut self, to: ToSession, _ctx: &mut Context<Self>) -> Self::Result{
+        trace!("id = {}, to_session = {:?} ", self.id, to);
+        match to{
+            ToSession::Ping => MessageResult(SessionReply::Pong),
+            ToSession::Stop => MessageResult(SessionReply::Ok),
+            ToSession::Meta => MessageResult(SessionReply::Meta(SessionMeta(self.id))),
+        }
     }
 }

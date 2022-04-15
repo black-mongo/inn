@@ -8,27 +8,36 @@
 // Created : 2022-04-15T11:16:30+08:00
 //-------------------------------------------------------------------
 
+use actix::Recipient;
 use actix::Message;
-// Ping message
-pub struct Ping;
-
-impl Message for Ping{
-    type Result = Pong;
+// Command Message to session actor
+#[derive(Debug)]
+pub enum ToSession{
+    Ping,
+    Stop,
+    Meta,
 }
-// Pong message
-#[derive(Message, Default, Debug, PartialEq)]
-#[rtype(result = "()")]
-pub struct Pong;
-
-// Get Session Meta
-pub struct GetSessionMeta;
+// Message reply from session actor
+#[derive(Debug, PartialEq)]
+pub enum SessionReply{
+    Pong,
+    Meta(SessionMeta),
+    Ok,
+}
+impl Message for ToSession{
+    type Result = SessionReply;
+}
 
 #[derive(Default, Debug, PartialEq)]
 pub struct SessionMeta(pub u64);
-impl Message for GetSessionMeta{
-   type Result = SessionMeta; 
+
+pub enum ToProxyServer{
+    Connect(Recipient<ToProxyServer>),
+    DisConnect 
 }
-// Stop Session
-#[derive(Message)]
-#[rtype(result="()")]
-pub struct StopSession;
+pub enum ProxyServerReply{
+    Ok
+}
+impl Message for ToProxyServer{
+    type Result = ProxyServerReply;
+}
