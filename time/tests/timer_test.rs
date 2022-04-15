@@ -1,3 +1,13 @@
+//-------------------------------------------------------------------
+// MIT License
+// Copyright (c) 2022 black-mongo
+// @author CameronYang
+// @doc
+//
+// @end
+// Created : 2022-04-14T11:23:45+08:00
+//-------------------------------------------------------------------
+
 use actix::AsyncContext;
 use actix::Running;
 use actix::{Actor, Context, Handler, System};
