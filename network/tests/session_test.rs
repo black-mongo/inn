@@ -10,7 +10,7 @@
 use actix::prelude::*;
 use network::*;
 #[actix_rt::test]
-async fn ping(){
+async fn ping() {
     env_logger::init();
     let session = VisitorSession::new(1);
     let addr = session.start();
@@ -19,7 +19,7 @@ async fn ping(){
     addr.send(ToSession::Stop).await.unwrap();
 }
 #[actix_rt::test]
-async fn get_session_meta(){
+async fn get_session_meta() {
     let session = VisitorSession::new(1);
     let addr = session.start();
     let meta = addr.send(ToSession::Meta).await.unwrap();
@@ -27,7 +27,7 @@ async fn get_session_meta(){
     addr.send(ToSession::Stop).await.unwrap();
 }
 #[actix_rt::test]
-async fn stop_session(){
+async fn stop_session() {
     let session = VisitorSession::new(1);
     let addr = session.start();
     let meta = addr.send(ToSession::Stop).await.unwrap();
