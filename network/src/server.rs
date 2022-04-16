@@ -14,8 +14,9 @@ use actix::{Actor, Context, Handler};
 use rand::rngs::ThreadRng;
 use rand::Rng;
 use std::collections::HashMap;
+#[derive(Clone)]
 pub struct ProxyServer {
-    sessions: HashMap<usize, Recipient<ToProxyServer>>,
+    sessions: HashMap<usize, Recipient<ToSession>>,
     rng: ThreadRng,
 }
 impl Default for ProxyServer {
@@ -52,13 +53,25 @@ impl Handler<ToProxyServer> for ProxyServer {
 #[cfg(test)]
 mod test {
     use super::*;
+    pub struct Session;
+    impl Actor for Session {
+        type Context = Context<Self>;
+        fn started(&mut self, _: &mut Context<Self>) {}
+    }
+    impl Handler<ToSession> for Session {
+        type Result = MessageResult<ToSession>;
+        fn handle(&mut self, _: ToSession, _: &mut Context<Self>) -> Self::Result {
+            MessageResult(SessionReply::Ok)
+        }
+    }
     #[actix_rt::test]
     async fn new_session() {
         let addr = ProxyServer::default().start();
+        let session = Session.start();
         let counter = addr.send(ToProxyServer::OnlineCounter).await.unwrap();
         assert_eq!(counter, ProxyServerReply::OnlineCounter(0));
         let id = addr
-            .send(ToProxyServer::Connect(addr.clone().recipient()))
+            .send(ToProxyServer::Connect(session.recipient()))
             .await
             .unwrap();
         match id {

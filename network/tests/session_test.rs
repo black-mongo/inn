@@ -12,7 +12,7 @@ use network::*;
 #[actix_rt::test]
 async fn ping() {
     env_logger::init();
-    let session = VisitorSession::new(1);
+    let session = VisitorSession::default();
     let addr = session.start();
     let pong = addr.send(ToSession::Ping).await.unwrap();
     assert_eq!(pong, SessionReply::Pong);
@@ -20,15 +20,15 @@ async fn ping() {
 }
 #[actix_rt::test]
 async fn get_session_meta() {
-    let session = VisitorSession::new(1);
+    let session = VisitorSession::default();
     let addr = session.start();
     let meta = addr.send(ToSession::Meta).await.unwrap();
-    assert_eq!(meta, SessionReply::Meta(SessionMeta(1)));
+    assert_eq!(meta, SessionReply::Meta(SessionMeta(0)));
     addr.send(ToSession::Stop).await.unwrap();
 }
 #[actix_rt::test]
 async fn stop_session() {
-    let session = VisitorSession::new(1);
+    let session = VisitorSession::default();
     let addr = session.start();
     let meta = addr.send(ToSession::Stop).await.unwrap();
     assert_eq!(meta, SessionReply::Ok);

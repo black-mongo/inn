@@ -33,7 +33,7 @@ pub struct SessionMeta(pub usize);
 
 #[derive(Debug)]
 pub enum ToProxyServer {
-    Connect(Recipient<ToProxyServer>),
+    Connect(Recipient<ToSession>),
     DisConnect(usize),
     OnlineCounter,
 }
