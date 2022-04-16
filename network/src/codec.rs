@@ -12,6 +12,7 @@ use actix_codec::Encoder;
 use actix_web::web::BytesMut;
 use byteorder::BigEndian;
 use byteorder::ByteOrder;
+use log::debug;
 use std::io::{Error, ErrorKind};
 pub struct VisitorCodec {
     state: State,
@@ -87,8 +88,8 @@ impl DstAddress {
         rs
     }
 }
-impl From<DstAddress> for Vec<u8>{
-    fn from(addr:DstAddress) -> Vec<u8> {
+impl From<DstAddress> for Vec<u8> {
+    fn from(addr: DstAddress) -> Vec<u8> {
         let mut rs = vec![];
         rs.extend(addr.address());
         rs.extend(addr.port());
@@ -97,20 +98,9 @@ impl From<DstAddress> for Vec<u8>{
 }
 #[derive(Debug, PartialEq)]
 pub enum VisitorRequest {
-    Greeting {
-        proto: Proto,
-        auth: Vec<u8>,
-    },
-    Auth {
-        id: String,
-        pwd: String,
-    },
-    Connection {
-        cmd: Cmd,
-        t: T,
-        ds_address: String,
-        ds_port: u16,
-    },
+    Greeting { proto: Proto, auth: Vec<u8> },
+    Auth { id: String, pwd: String },
+    Connection { cmd: Cmd, address: DstAddress },
     Forward(Vec<u8>),
 }
 #[derive(Debug, PartialEq)]
@@ -119,9 +109,9 @@ pub enum AuthChoice {
     UserNamePwd,
     NoAcceptable,
 }
-impl From<AuthChoice> for u8{
+impl From<AuthChoice> for u8 {
     fn from(choice: AuthChoice) -> u8 {
-        match choice{
+        match choice {
             AuthChoice::NoAcceptable => 0xFF,
             AuthChoice::UserNamePwd => 0x02,
             AuthChoice::NoAuth => 0x00,
@@ -149,7 +139,7 @@ pub enum BindStatus {
     CommandNotSupported,
     AddressTypeNotSupported,
 }
-impl From<BindStatus> for u8{
+impl From<BindStatus> for u8 {
     fn from(status: BindStatus) -> u8 {
         match status {
             BindStatus::Granted => 0x00,
@@ -173,11 +163,12 @@ pub enum VisitorResponse {
         status: BindStatus,
         address: Option<DstAddress>,
     },
+    Forward(Vec<u8>),
 }
-impl From<VisitorResponse> for Vec<u8>{
+impl From<VisitorResponse> for Vec<u8> {
     #[allow(clippy::vec_init_then_push)]
     fn from(resp: VisitorResponse) -> Vec<u8> {
-        match resp{
+        match resp {
             VisitorResponse::Choice(choice) => {
                 let mut rs = vec![];
                 rs.push(0x5);
@@ -203,6 +194,7 @@ impl From<VisitorResponse> for Vec<u8>{
                 }
                 rs
             }
+            VisitorResponse::Forward(data) => data,
         }
     }
 }
@@ -210,6 +202,7 @@ impl Decoder for VisitorCodec {
     type Item = VisitorRequest;
     type Error = Error;
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        debug!("Client data:{:?}", src.to_vec());
         if src.len() < 3 {
             return Ok(None);
         }
@@ -284,9 +277,11 @@ impl Decoder for VisitorCodec {
                         let _ = src.split_to(2);
                         return Ok(Some(VisitorRequest::Connection {
                             cmd: Cmd::Connection,
-                            ds_address: format!("{}.{}.{}.{}", ip[0], ip[1], ip[2], ip[3]),
-                            t: T::IPv4,
-                            ds_port: port,
+                            address: DstAddress::new(
+                                T::IPv4,
+                                &format!("{}.{}.{}.{}", ip[0], ip[1], ip[2], ip[3]),
+                                port,
+                            ),
                         }));
                     }
                     // Domain
@@ -303,9 +298,7 @@ impl Decoder for VisitorCodec {
                         if let Ok(name) = String::from_utf8(name.to_vec()) {
                             Ok(Some(VisitorRequest::Connection {
                                 cmd: Cmd::Connection,
-                                ds_address: name,
-                                t: T::Domain,
-                                ds_port: port,
+                                address: DstAddress::new(T::Domain, &name, port),
                             }))
                         } else {
                             Err(Error::new(
@@ -314,12 +307,10 @@ impl Decoder for VisitorCodec {
                             ))
                         }
                     }
-                    _ => {
-                        Err(Error::new(
-                            ErrorKind::Other,
-                            "Client connection Request only support IPv4 or Domain",
-                        ))
-                    }
+                    _ => Err(Error::new(
+                        ErrorKind::Other,
+                        "Client connection Request only support IPv4 or Domain",
+                    )),
                 }
             }
             // forward
@@ -333,17 +324,10 @@ impl Decoder for VisitorCodec {
 impl Encoder<VisitorResponse> for VisitorCodec {
     type Error = Error;
     fn encode(&mut self, item: VisitorResponse, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        match &self.proto {
-            Proto::Socks5 => {
-                let buf: Vec<u8> = item.into();
-                dst.extend_from_slice(buf.as_slice());
-                Ok(())
-            }
-            _ => Err(Error::new(
-                ErrorKind::Other,
-                "Vistor Response Only support socks5 protocoal !!!",
-            )),
-        }
+        debug!("proto={:?}, VisitorResponse = {:?}", self.proto, item);
+        let buf: Vec<u8> = item.into();
+        dst.extend_from_slice(buf.as_slice());
+        Ok(())
     }
 }
 
@@ -386,6 +370,10 @@ mod test {
                 address: Some(DstAddress::new(T::Domain, "abc", 80)),
             },
             vec![0x05, 0x00, 0x00, 0x03, 0x03, 97, 98, 99, 0, 80],
+        );
+        check_visitor_response(
+            VisitorResponse::Forward(vec![1, 2, 3, 4, 5]),
+            vec![1, 2, 3, 4, 5],
         );
     }
     fn check_visitor_response(resp: VisitorResponse, expected: Vec<u8>) {
@@ -473,9 +461,7 @@ mod test {
             vec![5, 1, 0, 1, 192, 168, 1, 1, 0, 80],
             VisitorRequest::Connection {
                 cmd: Cmd::Connection,
-                t: T::IPv4,
-                ds_address: "192.168.1.1".into(),
-                ds_port: 80,
+                address: DstAddress::new(T::IPv4, "192.168.1.1", 80),
             },
             vec![],
         );
@@ -484,9 +470,7 @@ mod test {
             vec![5, 1, 0, 3, 3, 97, 97, 98, 0, 80],
             VisitorRequest::Connection {
                 cmd: Cmd::Connection,
-                t: T::Domain,
-                ds_address: "aab".into(),
-                ds_port: 80,
+                address: DstAddress::new(T::Domain, "aab", 80),
             },
             vec![],
         );
