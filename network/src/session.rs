@@ -8,7 +8,7 @@
 // Created : 2022-04-14T11:19:56+08:00
 //-------------------------------------------------------------------
 
-use crate::codec::{VisitorRequest, VisitorResponse};
+use crate::codec::{AuthChoice, BindStatus, VisitorRequest, VisitorResponse};
 use crate::messages::*;
 use crate::VisitorCodec;
 use actix::prelude::*;
@@ -32,6 +32,11 @@ impl VisitorSession {
             framed: Some(framed),
         }
     }
+    fn write(&mut self, resp: VisitorResponse) {
+        if let Some(framed) = &mut self.framed {
+            framed.write(resp);
+        }
+    }
 }
 impl Actor for VisitorSession {
     type Context = Context<Self>;
@@ -44,8 +49,35 @@ impl Actor for VisitorSession {
     }
 }
 impl StreamHandler<Result<VisitorRequest, io::Error>> for VisitorSession {
-    fn handle(&mut self, _requst: Result<VisitorRequest, io::Error>, _ctx: &mut Context<Self>) {
-        trace!("stream handler");
+    fn handle(&mut self, requst: Result<VisitorRequest, io::Error>, ctx: &mut Context<Self>) {
+        trace!("id = {}, stream handler: {:?}", self.id, requst);
+        match requst {
+            Ok(VisitorRequest::Greeting { proto, auth }) => {
+                let _ = proto;
+                let _ = auth;
+                self.write(VisitorResponse::Choice(AuthChoice::UserNamePwd));
+            }
+            Ok(VisitorRequest::Auth { id, pwd }) => {
+                if id == "admin" && pwd == "123456" {
+                    self.write(VisitorResponse::AuthRespSuccess);
+                } else {
+                    self.write(VisitorResponse::AuthRespError);
+                }
+            }
+            Ok(VisitorRequest::Connection { cmd, address }) => {
+                let _ = cmd;
+                // Create remote connection
+                self.write(VisitorResponse::BindResp {
+                    status: BindStatus::Granted,
+                    address: Some(address),
+                })
+            }
+            Ok(VisitorRequest::Forward(data)) => self.write(VisitorResponse::Forward(data)),
+            e => {
+                error!("stream handle error = {:?}, Stop session", e);
+                ctx.stop();
+            }
+        }
     }
     fn finished(&mut self, _ctx: &mut Self::Context) {
         trace!("finished");
