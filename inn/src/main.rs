@@ -11,6 +11,7 @@ use actix::System;
 use network::NetWork;
 #[actix_rt::main]
 async fn main() {
-    NetWork.start("127.0.0.1", 4556, || {}).await;
+    env_logger::init_from_env(env_logger::Env::new().default_filter_or("debug"));
+    let _= NetWork.start("127.0.0.1", 4556, || {}).await;
     System::current().stop();
 }
