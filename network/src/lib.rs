@@ -18,7 +18,6 @@ use crate::codec::VisitorCodec;
 use actix::prelude::StreamHandler;
 use actix::Actor;
 use actix_rt::net::TcpListener;
-use std::future::Future;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use tokio::io::split;
@@ -27,12 +26,12 @@ use tokio_util::codec::FramedRead;
 
 pub struct NetWork;
 use log::debug;
+#[allow(clippy::unused_unit)]
 impl NetWork {
     pub fn start<F>(&self, ip: &str, port: usize, listen_success: F) -> JoinHandle<()>
     where
         F: FnOnce() -> () + 'static,
     {
-        env_logger::init();
         let ip = format!("{}:{}", ip, port);
         let addr = SocketAddr::from_str(&ip).unwrap();
         let server = server::ProxyServer::default().start();
