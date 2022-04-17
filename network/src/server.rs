@@ -37,7 +37,8 @@ impl Handler<ToProxyServer> for ProxyServer {
         match command {
             ToProxyServer::Connect(recipient) => {
                 let id = self.rng.gen::<usize>();
-                self.sessions.insert(id, recipient);
+                self.sessions.insert(id, recipient.clone());
+                recipient.do_send(ToSession::SetID(id));
                 MessageResult(ProxyServerReply::Id(id))
             }
             ToProxyServer::DisConnect(id) => {
