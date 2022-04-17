@@ -10,12 +10,18 @@
 
 use actix::Message;
 use actix::Recipient;
+
+use crate::codec::DstAddress;
 // Command Message to session actor
 #[derive(Debug)]
 pub enum ToSession {
     Ping,
     Stop,
     Meta,
+    SetID(usize),
+    RemoteConnected(Recipient<ToFoward>, DstAddress),
+    RemoteConnectionRefuse,
+    Forward(Vec<u8>),
 }
 // Message reply from session actor
 #[derive(Debug, PartialEq)]
@@ -45,4 +51,15 @@ pub enum ProxyServerReply {
 }
 impl Message for ToProxyServer {
     type Result = ProxyServerReply;
+}
+#[derive(Debug, PartialEq)]
+pub enum ToFoward {
+    Stop,
+    Forward(Vec<u8>),
+}
+pub enum ForwardReply {
+    Ok,
+}
+impl Message for ToFoward {
+    type Result = ForwardReply;
 }
