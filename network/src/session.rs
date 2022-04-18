@@ -180,7 +180,7 @@ impl actix::io::WriteHandler<io::Error> for VisitorSession {}
 
 impl Handler<ToSession> for VisitorSession {
     type Result = MessageResult<ToSession>;
-    fn handle(&mut self, to: ToSession, _ctx: &mut Context<Self>) -> Self::Result {
+    fn handle(&mut self, to: ToSession, ctx: &mut Context<Self>) -> Self::Result {
         match to {
             ToSession::Ping => MessageResult(SessionReply::Pong),
             ToSession::Stop => MessageResult(SessionReply::Ok),
@@ -204,6 +204,7 @@ impl Handler<ToSession> for VisitorSession {
                     status: BindStatus::ConnectionRefuse,
                     address: None,
                 });
+                ctx.stop();
                 MessageResult(SessionReply::Ok)
             }
             ToSession::SetID(id) => {
