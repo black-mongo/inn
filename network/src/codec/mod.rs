@@ -12,8 +12,11 @@ use actix_codec::Encoder;
 use actix_web::web::BytesMut;
 use byteorder::BigEndian;
 use byteorder::ByteOrder;
-use log::debug;
+use log::trace;
 use std::io::{Error, ErrorKind};
+
+use crate::server::ProxyServer;
+pub mod forward;
 pub struct VisitorCodec {
     state: State,
     proto: Proto,
@@ -26,6 +29,7 @@ impl Default for VisitorCodec {
         }
     }
 }
+#[allow(dead_code)]
 #[derive(Debug, PartialEq, Clone)]
 enum State {
     Undefined,
@@ -44,16 +48,16 @@ pub enum Cmd {
     Binding,
     AssociateUdp,
 }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum T {
     IPv4,
     Domain,
 }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct DstAddress {
-    t: T,
-    addr: String,
-    port: u16,
+    pub(crate) t: T,
+    pub(crate) addr: String,
+    pub(crate) port: u16,
 }
 impl DstAddress {
     pub fn new(t: T, addr: &str, port: u16) -> Self {
@@ -202,7 +206,7 @@ impl Decoder for VisitorCodec {
     type Item = VisitorRequest;
     type Error = Error;
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        debug!("Client data:{:?}", src.to_vec());
+        trace!("Client data:{:?}", src.to_vec());
         if src.len() < 3 {
             return Ok(None);
         }
@@ -216,7 +220,12 @@ impl Decoder for VisitorCodec {
                     } else {
                         let _ = src.split_to(2);
                         let buf = src.split_to(nauth as usize);
-                        self.state = State::Greeting;
+                        self.state = State::Auth;
+                        match ProxyServer::auth_choice(&buf.to_vec()){
+                            AuthChoice::NoAcceptable => self.state = State::Greeting,
+                            AuthChoice::UserNamePwd => self.state = State::Greeting,
+                            AuthChoice::NoAuth => self.state = State::Auth
+                        }
                         self.proto = Proto::Socks5;
                         Ok(Some(VisitorRequest::Greeting {
                             proto: Proto::Socks5,
@@ -224,7 +233,8 @@ impl Decoder for VisitorCodec {
                         }))
                     }
                 } else {
-                    Err(Error::from(ErrorKind::InvalidData))
+                    let msg = format!("Invalid socks5 protocol");
+                    Err(Error::new(ErrorKind::Other, msg))
                 }
             }
             (Proto::Socks5, State::Greeting) => {
@@ -324,7 +334,7 @@ impl Decoder for VisitorCodec {
 impl Encoder<VisitorResponse> for VisitorCodec {
     type Error = Error;
     fn encode(&mut self, item: VisitorResponse, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        debug!("proto={:?}, VisitorResponse = {:?}", self.proto, item);
+        trace!("proto={:?}, VisitorResponse = {:?}", self.proto, item);
         let buf: Vec<u8> = item.into();
         dst.extend_from_slice(buf.as_slice());
         Ok(())

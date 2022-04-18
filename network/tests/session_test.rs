@@ -10,7 +10,6 @@
 use actix::prelude::*;
 use byteorder::BigEndian;
 use byteorder::ByteOrder;
-use log::debug;
 use network::*;
 use std::vec::Vec;
 use tokio::io::AsyncWriteExt;
@@ -63,6 +62,7 @@ impl From<Auth> for Vec<u8> {
         rs
     }
 }
+#[allow(dead_code)]
 enum AddressType {
     Ipv4,
     Domain,
@@ -77,16 +77,17 @@ impl Default for Connection {
         Connection {
             t: AddressType::Ipv4,
             address: "127.0.0.1".into(),
-            port: 80,
+            port: 4555,
         }
     }
 }
-impl Connection{
-    fn new(t: AddressType, address: &str, port: u16) -> Self{
-        Connection{
+#[allow(dead_code)]
+impl Connection {
+    fn new(t: AddressType, address: &str, port: u16) -> Self {
+        Connection {
             t,
             address: address.into(),
-            port
+            port,
         }
     }
 }
@@ -127,8 +128,10 @@ async fn ct() {
         Undefined,
         Auth,
         Connection,
-        Forward
+        Forward,
     }
+
+    env_logger::init_from_env(env_logger::Env::new().default_filter_or("trace"));
     let _ = NetWork
         .start("127.0.0.1", 4555, || {
             // Connect to server
@@ -153,16 +156,16 @@ async fn ct() {
                             stream.write_all(rs.as_slice()).await.unwrap();
                             state = State::Connection;
                         }
-                        (State::Connection, Ok(_))  =>{
-                           state = State::Forward;
-                           stream.write_all(&[0,1,2]).await.unwrap();
-
+                        (State::Connection, Ok(_)) => {
+                            // assert_eq!(buf, vec![5, 2]);
+                            state = State::Forward;
+                            stream.write_all(&[5, 1, 0]).await.unwrap();
                         }
-                        (State::Forward, Ok(3)) =>{
-                            assert_eq!(buf, vec![0, 1, 2]);
+                        (State::Forward, Ok(3)) => {
+                            assert_eq!(buf, vec![5, 2]);
                             break;
                         }
-                        (_, Ok(_)) =>{
+                        (_, Ok(_)) => {
                             continue;
                         }
                         (_, Err(ref e)) if e.kind() == std::io::ErrorKind::WouldBlock => {
