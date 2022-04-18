@@ -30,18 +30,18 @@ impl Default for ProxyServer {
         }
     }
 }
-impl ProxyServer{
-    pub fn auth_choice(auths: &[u8]) -> AuthChoice  {
-        for auth in auths{
-           if *auth == 0x02{
-             return AuthChoice::UserNamePwd;
-           }
-           if *auth == 0x00 && !MUST_AUTH{
-            return AuthChoice::NoAuth;
-           }
-           if *auth == 0x00 && MUST_AUTH{
-            return AuthChoice::UserNamePwd;
-           }
+impl ProxyServer {
+    pub fn auth_choice(auths: &[u8]) -> AuthChoice {
+        for auth in auths {
+            if *auth == 0x02 {
+                return AuthChoice::UserNamePwd;
+            }
+            if *auth == 0x00 && !MUST_AUTH {
+                return AuthChoice::NoAuth;
+            }
+            if *auth == 0x00 && MUST_AUTH {
+                return AuthChoice::UserNamePwd;
+            }
         }
         AuthChoice::NoAcceptable
     }
