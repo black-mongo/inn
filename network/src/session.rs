@@ -11,8 +11,8 @@
 use crate::codec::forward::ForwardCodec;
 use crate::codec::{BindStatus, DstAddress, VisitorRequest, VisitorResponse};
 use crate::messages::*;
-use crate::VisitorCodec;
 use crate::server::ProxyServer;
+use crate::VisitorCodec;
 use actix::prelude::*;
 use actix::{Actor, Context};
 use log::*;
