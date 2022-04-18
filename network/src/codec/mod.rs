@@ -233,7 +233,7 @@ impl Decoder for VisitorCodec {
                         }))
                     }
                 } else {
-                    let msg = format!("Invalid socks5 protocol");
+                    let msg: String = "Invalid socks5 protocol".into();
                     Err(Error::new(ErrorKind::Other, msg))
                 }
             }

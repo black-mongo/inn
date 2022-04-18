@@ -1,8 +1,11 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
-}
+//-------------------------------------------------------------------
+// MIT License
+// Copyright (c) 2022 black-mongo
+// @author CameronYang
+// @doc
+//
+// @end
+// Created : 2022-04-18T23:22:05+08:00
+//-------------------------------------------------------------------
+
+pub mod cli;
