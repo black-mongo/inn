@@ -1,0 +1,13 @@
+[package]
+name = "inn_cli"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+network = {path = "../network"}
+actix = "0.13"
+actix-rt = "2.0.0"
+env_logger = "0.9"
+log = "0.4"
