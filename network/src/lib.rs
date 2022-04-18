@@ -14,7 +14,7 @@ pub mod session;
 pub use messages::*;
 pub use session::*;
 
-use crate::codec::VisitorCodec;
+use crate::codec::{VisitorCodec, T};
 use actix::prelude::StreamHandler;
 use actix::Actor;
 use actix_rt::net::TcpListener;
@@ -25,7 +25,7 @@ use tokio::task::JoinHandle;
 use tokio_util::codec::FramedRead;
 
 pub struct NetWork;
-use log::debug;
+use log::{debug, info};
 #[allow(clippy::unused_unit)]
 impl NetWork {
     pub fn start<F>(&self, ip: &str, port: usize, listen_success: F) -> JoinHandle<()>
@@ -39,8 +39,12 @@ impl NetWork {
             let listener = TcpListener::bind(&addr).await.unwrap();
             listen_success();
             debug!("Listen {}", ip);
-            while let Ok((stream, _)) = listener.accept().await {
-                debug!("New Client comming");
+            while let Ok((stream, socket_addr)) = listener.accept().await {
+                info!(
+                    "New Client comming: ip={}, port={}",
+                    socket_addr.ip(),
+                    socket_addr.port()
+                );
                 VisitorSession::create(|ctx| {
                     let server = server.clone();
                     let (r, w) = split(stream);
@@ -48,6 +52,11 @@ impl NetWork {
                     VisitorSession::new(
                         0,
                         server.recipient(),
+                        codec::DstAddress {
+                            t: T::IPv4,
+                            addr: socket_addr.ip().to_string(),
+                            port: socket_addr.port(),
+                        },
                         actix::io::FramedWrite::new(w, VisitorCodec::default(), ctx),
                     )
                 });

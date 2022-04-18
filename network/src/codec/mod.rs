@@ -14,6 +14,8 @@ use byteorder::BigEndian;
 use byteorder::ByteOrder;
 use log::trace;
 use std::io::{Error, ErrorKind};
+
+use crate::server::ProxyServer;
 pub mod forward;
 pub struct VisitorCodec {
     state: State,
@@ -219,6 +221,11 @@ impl Decoder for VisitorCodec {
                         let _ = src.split_to(2);
                         let buf = src.split_to(nauth as usize);
                         self.state = State::Auth;
+                        match ProxyServer::auth_choice(&buf.to_vec()){
+                            AuthChoice::NoAcceptable => self.state = State::Greeting,
+                            AuthChoice::UserNamePwd => self.state = State::Greeting,
+                            AuthChoice::NoAuth => self.state = State::Auth
+                        }
                         self.proto = Proto::Socks5;
                         Ok(Some(VisitorRequest::Greeting {
                             proto: Proto::Socks5,
@@ -226,7 +233,8 @@ impl Decoder for VisitorCodec {
                         }))
                     }
                 } else {
-                    Err(Error::from(ErrorKind::InvalidData))
+                    let msg = format!("Invalid socks5 protocol");
+                    Err(Error::new(ErrorKind::Other, msg))
                 }
             }
             (Proto::Socks5, State::Greeting) => {

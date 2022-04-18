@@ -8,12 +8,15 @@
 // Created : 2022-04-15T12:32:45+08:00
 //-------------------------------------------------------------------
 
+use crate::codec::AuthChoice;
 use crate::messages::*;
 use actix::prelude::*;
 use actix::{Actor, Context, Handler};
 use rand::rngs::ThreadRng;
 use rand::Rng;
 use std::collections::HashMap;
+// Enable it socks5 must auth
+const MUST_AUTH: bool = true;
 #[derive(Clone)]
 pub struct ProxyServer {
     sessions: HashMap<usize, Recipient<ToSession>>,
@@ -25,6 +28,22 @@ impl Default for ProxyServer {
             sessions: HashMap::new(),
             rng: rand::thread_rng(),
         }
+    }
+}
+impl ProxyServer{
+    pub fn auth_choice(auths: &[u8]) -> AuthChoice  {
+        for auth in auths{
+           if *auth == 0x02{
+             return AuthChoice::UserNamePwd;
+           }
+           if *auth == 0x00 && !MUST_AUTH{
+            return AuthChoice::NoAuth;
+           }
+           if *auth == 0x00 && MUST_AUTH{
+            return AuthChoice::UserNamePwd;
+           }
+        }
+        AuthChoice::NoAcceptable
     }
 }
 impl Actor for ProxyServer {

@@ -10,7 +10,6 @@
 use actix::prelude::*;
 use byteorder::BigEndian;
 use byteorder::ByteOrder;
-use log::debug;
 use network::*;
 use std::vec::Vec;
 use tokio::io::AsyncWriteExt;
@@ -63,6 +62,7 @@ impl From<Auth> for Vec<u8> {
         rs
     }
 }
+#[allow(dead_code)]
 enum AddressType {
     Ipv4,
     Domain,
@@ -81,6 +81,7 @@ impl Default for Connection {
         }
     }
 }
+#[allow(dead_code)]
 impl Connection {
     fn new(t: AddressType, address: &str, port: u16) -> Self {
         Connection {
