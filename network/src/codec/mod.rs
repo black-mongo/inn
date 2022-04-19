@@ -296,7 +296,6 @@ mod test {
     }
     #[test]
     fn socks5_decode() {
-        env_logger::init();
         check_none(vec![5]);
         check_none(vec![5, 1]);
         check_none(vec![5, 2, 0]);

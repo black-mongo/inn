@@ -114,7 +114,6 @@ mod test {
     use super::*;
     #[test]
     fn test_parse_expected_crlf_count_success() {
-        env_logger::init();
         check_ok(1, b"+OK\r\n", 1);
         check_ok(2, b"-Errors\r\n", 1);
         check_ok(3, b":10\r\n", 1);
@@ -133,7 +132,6 @@ mod test {
     }
     #[test]
     fn test_clicodec_decode() {
-        env_logger::init();
         check_decode(1, b"+OK\r\n", Cli::SimpleString("OK".into()));
         check_decode(2, b"-Errors\r\n", Cli::Errors("Errors".into()));
         check_decode(3, b":10\r\n", Cli::Integers(10));
