@@ -143,3 +143,19 @@ impl From<Cli> for String {
         }
     }
 }
+impl From<Vec<u8>> for Cli {
+    fn from(bytes: Vec<u8>) -> Self {
+        if let Ok(str) = String::from_utf8(bytes) {
+            str.into()
+        } else {
+            error!("Cli Bytes to String error invalid utf8");
+            Cli::NullArrays
+        }
+    }
+}
+impl From<Cli> for Vec<u8> {
+    fn from(cli: Cli) -> Self {
+        let str: String = cli.into();
+        str.into_bytes()
+    }
+}
