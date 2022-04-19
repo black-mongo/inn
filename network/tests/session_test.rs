@@ -53,9 +53,7 @@ impl Default for Auth {
 }
 impl From<Auth> for Vec<u8> {
     fn from(auth: Auth) -> Vec<u8> {
-        let mut rs = vec![];
-        rs.push(0x05);
-        rs.push(auth.id.len() as u8);
+        let mut rs = vec![0x05, auth.id.len() as u8];
         rs.extend(auth.id.as_bytes());
         rs.push(auth.pwd.len() as u8);
         rs.extend(auth.pwd.as_bytes());
@@ -94,10 +92,10 @@ impl Connection {
 
 impl From<Connection> for Vec<u8> {
     fn from(conn: Connection) -> Vec<u8> {
-        let mut rs: Vec<u8> = vec![];
-        rs.push(0x05);
-        rs.push(0x01);
-        rs.push(0x00);
+        let mut rs: Vec<u8> = vec![0x05, 0x01, 0x00];
+        // rs.push(0x05);
+        // rs.push(0x01);
+        // rs.push(0x00);
         match conn.t {
             AddressType::Domain => {
                 rs.push(0x03);
