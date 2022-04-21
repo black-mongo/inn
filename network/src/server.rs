@@ -12,6 +12,7 @@ use crate::codec::AuthChoice;
 use crate::messages::*;
 use actix::prelude::*;
 use actix::{Actor, Context, Handler};
+use log::debug;
 use rand::rngs::ThreadRng;
 use rand::Rng;
 use std::collections::HashMap;
@@ -55,17 +56,42 @@ impl Handler<ToProxyServer> for ProxyServer {
     fn handle(&mut self, command: ToProxyServer, _ctx: &mut Context<Self>) -> Self::Result {
         match command {
             ToProxyServer::Connect(recipient) => {
+                debug!("connect");
                 let id = self.rng.gen::<usize>();
                 self.sessions.insert(id, recipient.clone());
-                recipient.do_send(ToSession::SetID(id));
+                recipient.do_send(ToSession::ProxyServerReply(ProxyServerReply::Id(id)));
                 MessageResult(ProxyServerReply::Id(id))
             }
             ToProxyServer::DisConnect(id) => {
+                debug!("disconnect");
                 self.sessions.remove(&id);
                 MessageResult(ProxyServerReply::Ok)
             }
-            ToProxyServer::OnlineCounter => {
-                MessageResult(ProxyServerReply::OnlineCounter(self.sessions.len()))
+            ToProxyServer::OnlineCounter(id) => {
+                let len = self.sessions.len();
+                if let Some(session) = self.sessions.get(&id) {
+                    session.do_send(ToSession::ProxyServerReply(
+                        ProxyServerReply::OnlineCounter(len),
+                    ));
+                }
+                MessageResult(ProxyServerReply::OnlineCounter(len))
+            }
+            ToProxyServer::Cli(id, cli) => {
+                let cmd: Vec<String> = cli.into();
+                debug!("server recv cmd = {:?}", cmd);
+                match (self.sessions.get(&id), cmd.as_slice()) {
+                    (Some(session), [c]) if c == "online_counter" => {
+                        let len = self.sessions.len();
+                        session.do_send(ToSession::ProxyServerReply(ProxyServerReply::Cli(
+                            common::cli::Cli::Integers(len as i64),
+                        )));
+                    }
+                    (Some(session), [c]) if c == "stop" => {
+                        session.do_send(ToSession::Stop);
+                    }
+                    _ => {}
+                }
+                MessageResult(ProxyServerReply::Ok)
             }
         }
     }
@@ -88,7 +114,7 @@ mod test {
     async fn new_session() {
         let addr = ProxyServer::default().start();
         let session = Session.start();
-        let counter = addr.send(ToProxyServer::OnlineCounter).await.unwrap();
+        let counter = addr.send(ToProxyServer::OnlineCounter(0)).await.unwrap();
         assert_eq!(counter, ProxyServerReply::OnlineCounter(0));
         let id = addr
             .send(ToProxyServer::Connect(session.recipient()))
@@ -96,11 +122,11 @@ mod test {
             .unwrap();
         match id {
             ProxyServerReply::Id(id) => {
-                let counter = addr.send(ToProxyServer::OnlineCounter).await.unwrap();
+                let counter = addr.send(ToProxyServer::OnlineCounter(0)).await.unwrap();
                 assert_eq!(counter, ProxyServerReply::OnlineCounter(1));
                 let rs = addr.send(ToProxyServer::DisConnect(id)).await.unwrap();
                 assert_eq!(rs, ProxyServerReply::Ok);
-                let counter = addr.send(ToProxyServer::OnlineCounter).await.unwrap();
+                let counter = addr.send(ToProxyServer::OnlineCounter(0)).await.unwrap();
                 assert_eq!(counter, ProxyServerReply::OnlineCounter(0));
             }
             e => {
