@@ -218,13 +218,20 @@ impl Decoder for VisitorCodec {
     type Error = Error;
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         trace!("Client data:{:?}", src.to_vec());
-
+        if src.is_empty() {
+            return Ok(None);
+        }
         // check_proto
         if self.proto == Proto::Undefined {
             if src.as_ref()[0] == 0x05 {
                 self.proto = Proto::Socks5;
                 self.handler = Some(Box::new(SocksCodec::default()))
-            } else if src.as_ref()[0] == b'*' {
+            } else if src.as_ref()[0] == b'*'
+                || src.as_ref()[0] == b'+'
+                || src.as_ref()[0] == b'-'
+                || src.as_ref()[0] == b':'
+                || src.as_ref()[0] == b'$'
+            {
                 self.proto = Proto::Cli;
                 self.handler = Some(Box::new(CliCodec::default()))
             }
