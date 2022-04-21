@@ -62,7 +62,7 @@ jobs:
         if: >
           matrix.target.os == 'ubuntu-latest'
           && matrix.version == 'stable'
-          && github.ref == 'refs/heads/master'
+          && github.ref == 'refs/heads/main'
         run: |
           cargo install cargo-tarpaulin --vers "^0.13"
           cargo tarpaulin --out Xml --verbose
@@ -70,7 +70,7 @@ jobs:
         if: >
           matrix.target.os == 'ubuntu-latest'
           && matrix.version == 'stable'
-          && github.ref == 'refs/heads/master'
+          && github.ref == 'refs/heads/main'
         uses: codecov/codecov-action@v1
         with:
           file: cobertura.xml
