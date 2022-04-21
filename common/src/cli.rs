@@ -159,3 +159,41 @@ impl From<Cli> for Vec<u8> {
         str.into_bytes()
     }
 }
+
+impl From<Cli> for Vec<String> {
+    fn from(msg: Cli) -> Self {
+        let mut rs: Vec<String> = vec![];
+        match msg {
+            Cli::Arrays(list) => {
+                for i in list {
+                    match i {
+                        Cli::SimpleString(ss) | Cli::BulkString(ss) | Cli::Errors(ss) => {
+                            rs.push(ss);
+                        }
+                        Cli::Integers(int) => {
+                            rs.push(int.to_string());
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            Cli::SimpleString(ss) | Cli::BulkString(ss) | Cli::Errors(ss) => {
+                rs.push(ss);
+            }
+            Cli::Integers(int) => {
+                rs.push(int.to_string());
+            }
+            _ => {}
+        }
+        rs
+    }
+}
+impl From<Vec<String>> for Cli {
+    fn from(msg: Vec<String>) -> Self {
+        let mut rs = vec![];
+        for str in msg {
+            rs.push(Cli::BulkString(str));
+        }
+        Cli::Arrays(rs)
+    }
+}
