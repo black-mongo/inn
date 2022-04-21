@@ -15,6 +15,7 @@
 
 
 [![Build and Test](https://github.com/black-mongo/inn/workflows/Build%20and%20Test/badge.svg)](https://github.com/black-mongo/inn/actions?query=workflows%3A%22Build+and+Test%22)
+[![codecov](https://codecov.io/gh/black-mongo/inn/branch/main/graph/badge.svg?token=J562YL59IB)](https://codecov.io/gh/black-mongo/inn)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ## Features
