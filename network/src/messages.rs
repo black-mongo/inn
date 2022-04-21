@@ -18,10 +18,10 @@ pub enum ToSession {
     Ping,
     Stop,
     Meta,
-    SetID(usize),
     RemoteConnected(Recipient<ToFoward>, DstAddress),
     RemoteConnectionRefuse,
     Forward(Vec<u8>),
+    ProxyServerReply(ProxyServerReply),
 }
 // Message reply from session actor
 #[derive(Debug, PartialEq)]
@@ -41,13 +41,15 @@ pub struct SessionMeta(pub usize);
 pub enum ToProxyServer {
     Connect(Recipient<ToSession>),
     DisConnect(usize),
-    OnlineCounter,
+    OnlineCounter(usize),
+    Cli(usize, common::cli::Cli),
 }
 #[derive(Debug, PartialEq)]
 pub enum ProxyServerReply {
     Id(usize),
     OnlineCounter(usize),
     Ok,
+    Cli(common::cli::Cli),
 }
 impl Message for ToProxyServer {
     type Result = ProxyServerReply;
