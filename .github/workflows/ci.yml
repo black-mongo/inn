@@ -1,10 +1,10 @@
 name: CI
 
-on: push
-  # pull_request:
-    # types: [opened, synchronize, reopened]
-  # push:
-    # branches: [main]
+on:
+   pull_request:
+     types: [opened, synchronize, reopened]
+   push:
+     branches: [main]
 
 jobs:
   build_and_test:
@@ -62,7 +62,7 @@ jobs:
         if: >
           matrix.target.os == 'ubuntu-latest'
           && matrix.version == 'stable'
-          && github.ref == 'refs/heads/feature_coverage'
+          && github.ref == 'refs/heads/main'
         run: |
           cargo install cargo-tarpaulin --vers "^0.13"
           cargo tarpaulin --out Xml --verbose
@@ -70,7 +70,7 @@ jobs:
         if: >
           matrix.target.os == 'ubuntu-latest'
           && matrix.version == 'stable'
-          && github.ref == 'refs/heads/feature_coverage'
+          && github.ref == 'refs/heads/main'
         uses: codecov/codecov-action@v1
         with:
           file: cobertura.xml
