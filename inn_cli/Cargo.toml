@@ -7,7 +7,11 @@ edition = "2021"
 
 [dependencies]
 network = {path = "../network"}
-actix = "0.13"
+common = {path = "../common"}
+actix = "0.13.0"
 actix-rt = "2.0.0"
 env_logger = "0.9"
 log = "0.4"
+tokio = { version = "1.13.1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["codec"] }
+tokio-stream = "0.1.8"
