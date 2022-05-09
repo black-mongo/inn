@@ -13,25 +13,32 @@ use actix_web::web::BytesMut;
 use byteorder::BigEndian;
 use byteorder::ByteOrder;
 use log::trace;
-use std::io::{Error, ErrorKind};
+use std::io::Error;
+use std::io::ErrorKind;
 
-use crate::server::ProxyServer;
+use crate::codec::cli::CliCodec;
+use crate::codec::socks::SocksCodec;
+mod cli;
 pub mod forward;
+pub mod socks;
+trait VisitorDecoder {
+    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<VisitorRequest>, Error>;
+}
 pub struct VisitorCodec {
-    state: State,
     proto: Proto,
+    handler: Option<Box<dyn VisitorDecoder>>,
 }
 impl Default for VisitorCodec {
     fn default() -> Self {
         VisitorCodec {
-            state: State::Undefined,
             proto: Proto::Undefined,
+            handler: None,
         }
     }
 }
 #[allow(dead_code)]
 #[derive(Debug, PartialEq, Clone)]
-enum State {
+pub(crate) enum State {
     Undefined,
     Greeting,
     Auth,
@@ -41,6 +48,7 @@ enum State {
 pub enum Proto {
     Undefined,
     Socks5,
+    Cli,
 }
 #[derive(Debug, PartialEq)]
 pub enum Cmd {
@@ -106,6 +114,7 @@ pub enum VisitorRequest {
     Auth { id: String, pwd: String },
     Connection { cmd: Cmd, address: DstAddress },
     Forward(Vec<u8>),
+    Cli(common::cli::Cli),
 }
 #[derive(Debug, PartialEq)]
 pub enum AuthChoice {
@@ -168,6 +177,7 @@ pub enum VisitorResponse {
         address: Option<DstAddress>,
     },
     Forward(Vec<u8>),
+    Cli(common::cli::Cli),
 }
 impl From<VisitorResponse> for Vec<u8> {
     #[allow(clippy::vec_init_then_push)]
@@ -199,6 +209,7 @@ impl From<VisitorResponse> for Vec<u8> {
                 rs
             }
             VisitorResponse::Forward(data) => data,
+            VisitorResponse::Cli(cli) => cli.into(),
         }
     }
 }
@@ -207,127 +218,27 @@ impl Decoder for VisitorCodec {
     type Error = Error;
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         trace!("Client data:{:?}", src.to_vec());
-        if src.len() < 3 {
+        if src.is_empty() {
             return Ok(None);
         }
-        match (&self.proto, &self.state) {
-            (Proto::Undefined, State::Undefined) => {
-                let buf = src.as_ref();
-                if buf[0] == 0x05 {
-                    let nauth = buf[1] as usize;
-                    if src.len() < (nauth + 2) {
-                        Ok(None)
-                    } else {
-                        let _ = src.split_to(2);
-                        let buf = src.split_to(nauth as usize);
-                        self.state = State::Auth;
-                        match ProxyServer::auth_choice(&buf.to_vec()) {
-                            AuthChoice::NoAcceptable => self.state = State::Greeting,
-                            AuthChoice::UserNamePwd => self.state = State::Greeting,
-                            AuthChoice::NoAuth => self.state = State::Auth,
-                        }
-                        self.proto = Proto::Socks5;
-                        Ok(Some(VisitorRequest::Greeting {
-                            proto: Proto::Socks5,
-                            auth: buf.to_vec(),
-                        }))
-                    }
-                } else {
-                    let msg = format!("Invalid socks5 protocol");
-                    Err(Error::new(ErrorKind::Other, msg))
-                }
+        // check_proto
+        if self.proto == Proto::Undefined {
+            if src.as_ref()[0] == 0x05 {
+                self.proto = Proto::Socks5;
+                self.handler = Some(Box::new(SocksCodec::default()))
+            } else if src.as_ref()[0] == b'*'
+                || src.as_ref()[0] == b'+'
+                || src.as_ref()[0] == b'-'
+                || src.as_ref()[0] == b':'
+                || src.as_ref()[0] == b'$'
+            {
+                self.proto = Proto::Cli;
+                self.handler = Some(Box::new(CliCodec::default()))
             }
-            (Proto::Socks5, State::Greeting) => {
-                // remove ver 0x05
-                if src.len() < 2 {
-                    return Ok(None);
-                }
-                let buf = src.as_ref();
-                let id_len = buf[1] as usize;
-                if src.len() < id_len + 3 {
-                    return Ok(None);
-                }
-                let pwd_len = buf[id_len + 2] as usize;
-                if src.len() < pwd_len + id_len + 3 {
-                    return Ok(None);
-                }
-                let _ = src.split_to(2);
-                let id = src.split_to(id_len);
-                let _ = src.split_to(1);
-                let pwd = src.split_to(pwd_len);
-                self.state = State::Auth;
-                Ok(Some(VisitorRequest::Auth {
-                    id: String::from_utf8(id.to_vec()).unwrap(),
-                    pwd: String::from_utf8(pwd.to_vec()).unwrap(),
-                }))
-            }
-            (Proto::Socks5, State::Auth) => {
-                // Client connection Request
-                if src.len() < 5 {
-                    return Ok(None);
-                }
-                let buf = src.as_ref();
-                if buf[1] != 0x01 {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        "Client connection Request only support stream Connection",
-                    ));
-                }
-                let addr_type = buf[3];
-                match addr_type {
-                    // IPV4
-                    0x01 => {
-                        if src.len() < 10 {
-                            return Ok(None);
-                        }
-                        let _ = src.split_to(4);
-                        let ip = src.split_to(4);
-                        let port = BigEndian::read_u16(src.as_ref());
-                        self.state = State::Forward;
-                        let _ = src.split_to(2);
-                        return Ok(Some(VisitorRequest::Connection {
-                            cmd: Cmd::Connection,
-                            address: DstAddress::new(
-                                T::IPv4,
-                                &format!("{}.{}.{}.{}", ip[0], ip[1], ip[2], ip[3]),
-                                port,
-                            ),
-                        }));
-                    }
-                    // Domain
-                    0x03 => {
-                        let name_len = buf[4] as usize;
-                        if src.len() < name_len + 7 {
-                            return Ok(None);
-                        }
-                        let _ = src.split_to(5);
-                        let name = src.split_to(name_len);
-                        let port = BigEndian::read_u16(src.as_ref());
-                        let _ = src.split_to(2);
-                        self.state = State::Forward;
-                        if let Ok(name) = String::from_utf8(name.to_vec()) {
-                            Ok(Some(VisitorRequest::Connection {
-                                cmd: Cmd::Connection,
-                                address: DstAddress::new(T::Domain, &name, port),
-                            }))
-                        } else {
-                            Err(Error::new(
-                                ErrorKind::Other,
-                                "Client connection Request Domain invalid",
-                            ))
-                        }
-                    }
-                    _ => Err(Error::new(
-                        ErrorKind::Other,
-                        "Client connection Request only support IPv4 or Domain",
-                    )),
-                }
-            }
-            // forward
-            (Proto::Socks5, State::Forward) => Ok(Some(VisitorRequest::Forward(
-                src.split_to(src.len()).to_vec(),
-            ))),
-            _ => Ok(None),
+        }
+        match &mut self.handler {
+            Some(handler) => handler.decode(src),
+            _ => Err(Error::new(ErrorKind::Other, "Invalid protocol")),
         }
     }
 }
@@ -392,7 +303,6 @@ mod test {
     }
     #[test]
     fn socks5_decode() {
-        env_logger::init();
         check_none(vec![5]);
         check_none(vec![5, 1]);
         check_none(vec![5, 2, 0]);
@@ -486,62 +396,53 @@ mod test {
         );
     }
     fn check_none(input: Vec<u8>) {
-        let mut codec = VisitorCodec::default();
+        let mut codec = SocksCodec::default();
         let mut bytes = BytesMut::from(input.as_slice());
         let rs = codec.decode(&mut bytes).unwrap();
         assert_eq!(rs, None);
         assert_eq!(bytes.to_vec(), input);
     }
     fn check_greeting(input: Vec<u8>, greeting: VisitorRequest, remain: Vec<u8>) {
-        let mut codec = VisitorCodec::default();
+        let mut codec = SocksCodec::default();
         let mut bytes = BytesMut::from(input.as_slice());
         let rs = codec.decode(&mut bytes).unwrap();
         assert_eq!(codec.state, State::Greeting);
-        assert_eq!(codec.proto, Proto::Socks5);
         assert_eq!(rs, Some(greeting));
         assert_eq!(bytes.to_vec(), remain);
     }
     fn check_auth(input: Vec<u8>, auth: VisitorRequest, remain: Vec<u8>) {
-        let mut codec = VisitorCodec::default();
+        let mut codec = SocksCodec::default();
         let mut bytes = BytesMut::from(input.as_slice());
         codec.state = State::Greeting;
-        codec.proto = Proto::Socks5;
         let rs = codec.decode(&mut bytes).unwrap();
         assert_eq!(codec.state, State::Auth);
-        assert_eq!(codec.proto, Proto::Socks5);
         assert_eq!(rs, Some(auth));
         assert_eq!(bytes.to_vec(), remain);
     }
     fn check_auth_none(input: Vec<u8>, remain: Vec<u8>) {
-        let mut codec = VisitorCodec::default();
+        let mut codec = SocksCodec::default();
         let mut bytes = BytesMut::from(input.as_slice());
         codec.state = State::Greeting;
-        codec.proto = Proto::Socks5;
         let rs = codec.decode(&mut bytes).unwrap();
         assert_eq!(codec.state, State::Greeting);
-        assert_eq!(codec.proto, Proto::Socks5);
         assert_eq!(rs, None);
         assert_eq!(bytes.to_vec(), remain);
     }
     fn check_connection(input: Vec<u8>, connection: VisitorRequest, remain: Vec<u8>) {
-        let mut codec = VisitorCodec::default();
+        let mut codec = SocksCodec::default();
         let mut bytes = BytesMut::from(input.as_slice());
         codec.state = State::Auth;
-        codec.proto = Proto::Socks5;
         let rs = codec.decode(&mut bytes).unwrap();
         assert_eq!(codec.state, State::Forward);
-        assert_eq!(codec.proto, Proto::Socks5);
         assert_eq!(rs, Some(connection));
         assert_eq!(bytes.to_vec(), remain);
     }
     fn check_connection_none(input: Vec<u8>, remain: Vec<u8>) {
-        let mut codec = VisitorCodec::default();
+        let mut codec = SocksCodec::default();
         let mut bytes = BytesMut::from(input.as_slice());
         codec.state = State::Auth;
-        codec.proto = Proto::Socks5;
         let rs = codec.decode(&mut bytes).unwrap();
         assert_eq!(codec.state, State::Auth);
-        assert_eq!(codec.proto, Proto::Socks5);
         assert_eq!(rs, None);
         assert_eq!(bytes.to_vec(), remain);
     }
