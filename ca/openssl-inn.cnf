@@ -1,0 +1,37 @@
+HOME            = .
+RANDFILE        = $ENV::HOME/.rnd
+
+####################################################################
+[ req ]
+default_bits        = 4096
+distinguished_name  = server_distinguished_name
+req_extensions      = server_req_extensions
+string_mask         = utf8only
+prompt              = no
+
+####################################################################
+[ server_distinguished_name ]
+countryName                 = PL
+stateOrProvinceName         = Malopolska
+localityName                = Krakow
+commonName                  = Inn 
+
+####################################################################
+[ server_req_extensions ]
+
+subjectKeyIdentifier        = hash
+basicConstraints            = CA:FALSE
+keyUsage                    = digitalSignature, keyEncipherment
+subjectAltName              = @alternate_names
+nsComment                   = "Fake Dev-Only Certificate"
+
+####################################################################
+[ alternate_names ]
+
+DNS.1       = localhost
+
+DNS.2       = *.example.com 
+DNS.3       = www.example.com 
+DNS.4       = github.com
+DNS.5       = www.github.com
+IP          = 127.0.0.1
