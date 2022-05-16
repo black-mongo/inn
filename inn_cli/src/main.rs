@@ -8,8 +8,11 @@
 // Created : 2022-04-18T23:21:58+08:00
 //-------------------------------------------------------------------
 mod session;
+use crate::session::CliSession;
 use actix::clock::sleep;
 use actix::{Actor, Recipient, StreamHandler};
+use clap::Parser;
+use common::gen;
 use log::info;
 use network::codec::VisitorCodec;
 use session::{CliMessage, CliResponse};
@@ -18,10 +21,69 @@ use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio_util::codec::FramedRead;
 
-use crate::session::CliSession;
-#[actix_rt::main]
-async fn main() {
+/// Simple program to gen ca
+#[derive(Parser)]
+#[clap(name = "Inn", version, about, author)]
+struct Args {
+    #[clap(subcommand)]
+    subcmd: SubCommand,
+}
+
+#[derive(Parser)]
+enum SubCommand {
+    /// run proxy serve
+    Run,
+    /// gen your own ca cert and private key
+    Genca(GenCa),
+}
+#[derive(Parser, Debug)]
+struct GenCa {
+    #[clap(
+        short,
+        long,
+        default_value = "server",
+        help = "`ca` for ca cert and `server` for server cert"
+    )]
+    t: String,
+    #[clap(
+        short,
+        long,
+        default_value = "ca/inn",
+        help = "private key file and cert files output path"
+    )]
+    output: String,
+    #[clap(
+        short,
+        long,
+        default_value = "ca/ca",
+        help = "ca private key file and cert files path"
+    )]
+    input: String,
+    #[clap(long, default_value = "Inn", help = "Common Name")]
+    cn: String,
+    #[clap(long, default_value = "Inn", help = "Organization Name")]
+    org: String,
+    #[clap(short, long, default_value = "CN", help = "Country Name")]
+    nation: String,
+    #[clap(short, long, default_value = "CN", help = "Locality Name")]
+    local: String,
+}
+fn main() {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("debug"));
+    let args = Args::parse();
+    match args.subcmd {
+        SubCommand::Run => run(),
+        SubCommand::Genca(ca) => {
+            // gen ca
+            if ca.t == "ca" {
+                gen::gen_ca(ca.cn, ca.org, ca.nation, ca.local, ca.output)
+            } else {
+            }
+        }
+    }
+}
+#[actix_rt::main]
+async fn run() {
     let ip = "127.0.0.1";
     let port = 4556;
     let (tx, mut rx) = mpsc::channel::<CliResponse>(10);
