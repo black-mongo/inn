@@ -12,8 +12,8 @@ use crate::session::CliSession;
 use actix::clock::sleep;
 use actix::{Actor, Recipient, StreamHandler};
 use clap::Parser;
-use common::gen;
-use log::info;
+use common::genca::CertAuthority;
+use log::{debug, error, info};
 use network::codec::VisitorCodec;
 use session::{CliMessage, CliResponse};
 use tokio::io::split;
@@ -67,6 +67,15 @@ struct GenCa {
     nation: String,
     #[clap(short, long, default_value = "CN", help = "Locality Name")]
     local: String,
+    #[clap(long, default_value = "inn.com", help = "Host Name")]
+    host: String,
+    #[clap(
+        short,
+        long,
+        default_value = "397",
+        help = "Cert file will Expire after days"
+    )]
+    days: i64,
 }
 fn main() {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("debug"));
@@ -76,8 +85,19 @@ fn main() {
         SubCommand::Genca(ca) => {
             // gen ca
             if ca.t == "ca" {
-                gen::gen_ca(ca.cn, ca.org, ca.nation, ca.local, ca.output)
+                CertAuthority::gen_ca(ca.cn, ca.org, ca.nation, ca.local, ca.output)
             } else {
+                let cert_authority = CertAuthority::new(
+                    format!("{}/cacert.pem", ca.input),
+                    format!("{}/cakey.pem", ca.input),
+                );
+                let cert = cert_authority.gen_cert(ca.host.clone(), ca.days);
+                debug!("{}", cert);
+                if let Err(err) =
+                    std::fs::write(format!("{}/{}.cert.pem", ca.output, ca.host), cert)
+                {
+                    error!("private key file write failed: {}", err);
+                }
             }
         }
     }
