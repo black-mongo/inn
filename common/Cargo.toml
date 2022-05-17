@@ -9,3 +9,6 @@ edition = "2021"
 env_logger = "0.9"
 log = "0.4"
 rcgen = { version = "0.9", features = ["x509-parser"] }
+rustls-pemfile = "0.3"
+rustls = "0.20" 
+time = "0.3"
