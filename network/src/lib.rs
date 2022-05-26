@@ -13,7 +13,7 @@ mod server;
 pub mod session;
 pub use messages::*;
 pub use session::*;
-
+pub mod proxy;
 use crate::codec::{VisitorCodec, T};
 use actix::prelude::StreamHandler;
 use actix::Actor;
@@ -25,7 +25,7 @@ use tokio::task::JoinHandle;
 use tokio_util::codec::FramedRead;
 
 pub struct NetWork;
-use log::{debug, info};
+use log::info;
 #[allow(clippy::unused_unit)]
 impl NetWork {
     pub fn start<F>(&self, ip: &str, port: usize, listen_success: F) -> JoinHandle<()>
@@ -38,7 +38,7 @@ impl NetWork {
         actix::spawn(async move {
             let listener = TcpListener::bind(&addr).await.unwrap();
             listen_success();
-            debug!("Listen {}", ip);
+            info!("Sock5 proxy server, Listening on socks5://{}", ip);
             while let Ok((stream, socket_addr)) = listener.accept().await {
                 info!(
                     "New Client comming: ip={}, port={}",
