@@ -10,15 +10,23 @@
 extern crate rcgen;
 use log::debug;
 use log::error;
+use moka::future::Cache;
+use pem::Pem;
 use rcgen::*;
+use rustls::ServerConfig;
 use std::fs;
+use std::sync::Arc;
+use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 use time::ext::NumericalDuration;
 use time::OffsetDateTime;
-
+const MAX_CACHE_SIZE: u64 = 1024;
+#[derive(Clone)]
 pub struct CertAuthority {
     ca_key: rustls::PrivateKey,
     ca_cert: rustls::Certificate,
+    cache: Cache<String, Arc<ServerConfig>>,
+    serial_number: Arc<Mutex<u64>>,
 }
 impl CertAuthority {
     pub fn new(cert_file: String, key_file: String) -> Self {
@@ -35,16 +43,52 @@ impl CertAuthority {
         CertAuthority {
             ca_key: private_key,
             ca_cert,
+            cache: Cache::new(MAX_CACHE_SIZE),
+            serial_number: Arc::new(Mutex::new(CertAuthority::now_seconds())),
         }
     }
-    pub fn gen_cert(&self, host: String, days: i64) -> String {
+    pub async fn dynamic_gen_cert(&self, host: &str) -> Arc<ServerConfig> {
+        if let Some(server_config) = self.cache.get(&host.to_string()) {
+            return server_config;
+        }
+
+        let cert = self.gen_cert(host, 365);
+        let certs: Vec<rustls::Certificate> = vec![cert];
+
+        let server_cfg = ServerConfig::builder()
+            .with_safe_defaults()
+            .with_no_client_auth()
+            .with_single_cert(certs, self.ca_key.clone())
+            .expect("Failed to set certificate");
+        let server_cfg = Arc::new(server_cfg);
+
+        self.cache
+            .insert(host.to_string(), Arc::clone(&server_cfg))
+            .await;
+        server_cfg
+    }
+    pub fn gen_cert_pem(&self, host: &str, days: i64) -> String {
+        let cert = self.gen_cert(host, days);
+        let p = Pem {
+            tag: "CERTIFICATE".to_string(),
+            contents: cert.0,
+        };
+        pem::encode(&p)
+    }
+    fn gen_cert(&self, host: &str, days: i64) -> rustls::Certificate {
         let mut params = rcgen::CertificateParams::default();
+        {
+            let serial_number = Arc::clone(&self.serial_number);
+            let mut serial_number = serial_number.lock().unwrap();
+            params.serial_number = Some(*serial_number);
+            *serial_number += 1;
+        }
         params.serial_number = Some(Self::now_seconds());
         params.not_before = OffsetDateTime::now_utc().saturating_sub(1.days());
         params.not_after = OffsetDateTime::now_utc().saturating_add(days.days());
         params
             .subject_alt_names
-            .push(SanType::DnsName(host.clone()));
+            .push(SanType::DnsName(host.to_string()));
         let mut distinguished_name = DistinguishedName::new();
         distinguished_name.push(DnType::CommonName, host);
         params.distinguished_name = distinguished_name;
@@ -67,8 +111,10 @@ impl CertAuthority {
             .expect("Failed to generate CA certificate");
 
         let cert = rcgen::Certificate::from_params(params).expect("Failed to generate certificate");
-        cert.serialize_pem_with_signer(&ca_cert)
-            .expect("Failed to serialize certificate")
+        rustls::Certificate(
+            cert.serialize_der_with_signer(&ca_cert)
+                .expect("Failed to serialize certificate"),
+        )
     }
     pub fn gen_ca(
         common_name: String,

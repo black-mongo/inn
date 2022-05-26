@@ -91,7 +91,7 @@ fn main() {
                     format!("{}/cacert.pem", ca.input),
                     format!("{}/cakey.pem", ca.input),
                 );
-                let cert = cert_authority.gen_cert(ca.host.clone(), ca.days);
+                let cert = cert_authority.gen_cert_pem(&ca.host, ca.days);
                 debug!("{}", cert);
                 if let Err(err) =
                     std::fs::write(format!("{}/{}.cert.pem", ca.output, ca.host), cert)
