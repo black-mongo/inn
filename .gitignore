@@ -11,3 +11,4 @@ Cargo.lock
 /ca/ca
 /ca/ca-clients
 ca/inn
+ca/.DS_Store
