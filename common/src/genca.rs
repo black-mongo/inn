@@ -139,8 +139,8 @@ impl CertAuthority {
         let cert = Certificate::from_params(params).unwrap();
         let cert_crt = cert.serialize_pem().unwrap();
         let _ = fs::create_dir(&out);
-        let cert_file = format!("{}/cert.pem", &out);
-        let key_file = format!("{}/key.pem", &out);
+        let cert_file = format!("{}/cacert.pem", &out);
+        let key_file = format!("{}/cakey.pem", &out);
         debug!("{}\n{}", cert_file, cert_crt);
         if let Err(err) = fs::write(cert_file, cert_crt) {
             error!("cert file write failed: {}", err);
