@@ -10,7 +10,7 @@
 use actix::prelude::*;
 use byteorder::BigEndian;
 use byteorder::ByteOrder;
-use network::*;
+use inn_network::*;
 use std::vec::Vec;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;

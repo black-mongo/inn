@@ -1,7 +1,16 @@
 [package]
-name = "common"
+name = "inn-common"
+description = "A common library for Inn"
+documentation = "https://docs.rs/inn"
+repository = "https://github.com/black-mongo/inn"
+homepage = "https://github.com/black-mongo/inn"
+keywords = ["inn", "fiddler", "charles", "whistle"]
+categories = ["network-programming"]
+readme = "README.md"
+license = "MIT"
 version = "0.1.0"
 edition = "2021"
+authors = ["Cam"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

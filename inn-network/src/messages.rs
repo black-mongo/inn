@@ -42,14 +42,14 @@ pub enum ToProxyServer {
     Connect(Recipient<ToSession>),
     DisConnect(usize),
     OnlineCounter(usize),
-    Cli(usize, common::cli::Cli),
+    Cli(usize, inn_common::cli::Cli),
 }
 #[derive(Debug, PartialEq)]
 pub enum ProxyServerReply {
     Id(usize),
     OnlineCounter(usize),
     Ok,
-    Cli(common::cli::Cli),
+    Cli(inn_common::cli::Cli),
 }
 impl Message for ToProxyServer {
     type Result = ProxyServerReply;

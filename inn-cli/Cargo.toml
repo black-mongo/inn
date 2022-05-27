@@ -6,8 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-network = {path = "../network"}
-common = {path = "../common"}
+inn-network = "0.1"
+inn-common = "0.1" 
 actix = "0.13.0"
 actix-rt = "2.0.0"
 env_logger = "0.9"

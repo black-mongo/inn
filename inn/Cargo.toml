@@ -5,7 +5,8 @@ documentation = "https://docs.rs/inn"
 repository = "https://github.com/black-mongo/inn"
 homepage = "https://github.com/black-mongo/inn"
 keywords = ["inn", "fiddler", "charles", "whistle"]
-categories = ["plugins", "network-programming"]
+categories = ["network-programming",
+"web-programming::http-server"]
 readme = "README.md"
 license = "MIT"
 version = "0.2.0"
@@ -14,7 +15,7 @@ authors = ["Cam"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-network={path="../network"}
+inn-network = "0.1"
 actix = "0.13"
 actix-rt = "2.0.0"
 env_logger = "0.9"

@@ -114,7 +114,7 @@ pub enum VisitorRequest {
     Auth { id: String, pwd: String },
     Connection { cmd: Cmd, address: DstAddress },
     Forward(Vec<u8>),
-    Cli(common::cli::Cli),
+    Cli(inn_common::cli::Cli),
 }
 #[derive(Debug, PartialEq)]
 pub enum AuthChoice {
@@ -177,7 +177,7 @@ pub enum VisitorResponse {
         address: Option<DstAddress>,
     },
     Forward(Vec<u8>),
-    Cli(common::cli::Cli),
+    Cli(inn_common::cli::Cli),
 }
 impl From<VisitorResponse> for Vec<u8> {
     #[allow(clippy::vec_init_then_push)]

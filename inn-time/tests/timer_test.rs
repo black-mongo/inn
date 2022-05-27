@@ -11,11 +11,11 @@
 use actix::AsyncContext;
 use actix::Running;
 use actix::{Actor, Context, Handler, System};
+use inn_time::timer::RegisterTimer;
+use inn_time::timer::TimerEvent;
+use inn_time::timer::TimerType;
+use inn_time::Timer;
 use std::time::Duration;
-use time::timer::RegisterTimer;
-use time::timer::TimerEvent;
-use time::timer::TimerType;
-use time::Timer;
 #[derive(Default)]
 pub struct TestActor(pub usize);
 

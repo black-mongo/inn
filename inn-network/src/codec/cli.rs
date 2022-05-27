@@ -95,7 +95,7 @@ impl VisitorDecoder for CliCodec {
                 if self.crlf_counter == self.expected_crlf_count {
                     // split
                     let packet = src.split_to(i + 1);
-                    let rs: common::cli::Cli = packet.to_vec().into();
+                    let rs: inn_common::cli::Cli = packet.to_vec().into();
                     self.pos = 0;
                     self.crlf_counter = 0;
                     self.expected_crlf_count = 0;
@@ -109,7 +109,7 @@ impl VisitorDecoder for CliCodec {
 
 #[cfg(test)]
 mod test {
-    use common::cli::Cli;
+    use inn_common::cli::Cli;
 
     use super::*;
     #[test]
@@ -213,7 +213,7 @@ mod test {
         line: usize,
         codec: &mut CliCodec,
         input: &[u8],
-        expected: common::cli::Cli,
+        expected: inn_common::cli::Cli,
     ) {
         let mut bytes = BytesMut::from(input);
         let rs = codec.decode(&mut bytes).unwrap();
@@ -224,7 +224,7 @@ mod test {
         let rs = codec.decode(&mut bytes).unwrap();
         assert_eq!((line, rs), (line, None));
     }
-    fn check_decode(line: usize, input: &[u8], expected: common::cli::Cli) {
+    fn check_decode(line: usize, input: &[u8], expected: inn_common::cli::Cli) {
         let mut codec = CliCodec::default();
         let mut bytes = BytesMut::from(input);
         let rs = codec.decode(&mut bytes).unwrap();
