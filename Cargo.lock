@@ -1325,7 +1325,7 @@ dependencies = [
  "actix 0.13.0",
  "actix-rt 2.7.0",
  "env_logger",
- "inn-network",
+ "inn-network 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log",
  "tokio 1.18.2",
 ]
@@ -1394,6 +1394,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "inn-network"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae84ea5032487548838c8d8ccc4acf9a34fd1b7ef77327e6ebee9eddf5c09328"
+dependencies = [
+ "actix 0.13.0",
+ "actix-codec",
+ "actix-files",
+ "actix-rt 2.7.0",
+ "actix-web",
+ "actix-web-actors",
+ "byteorder",
+ "bytes 1.1.0",
+ "env_logger",
+ "futures-util",
+ "http",
+ "hyper",
+ "hyper-proxy",
+ "hyper-rustls 0.23.0",
+ "inn-common 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log",
+ "rand 0.8.5",
+ "rustls-pemfile 1.0.0",
+ "serde",
+ "serde_json",
+ "tokio 1.18.2",
+ "tokio-rustls 0.23.4",
+ "tokio-stream",
+ "tokio-util 0.7.1",
+ "webpki-roots 0.22.3",
+]
+
+[[package]]
 name = "inn_cli"
 version = "0.1.0"
 dependencies = [
@@ -1401,8 +1434,8 @@ dependencies = [
  "actix-rt 2.7.0",
  "clap",
  "env_logger",
- "inn-common 0.1.0",
- "inn-network",
+ "inn-common 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "inn-network 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log",
  "tokio 1.18.2",
  "tokio-stream",
