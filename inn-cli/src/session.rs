@@ -9,11 +9,11 @@
 //-------------------------------------------------------------------
 
 use actix::prelude::*;
-use log::debug;
-use network::{
+use inn_network::{
     codec::{VisitorCodec, VisitorRequest, VisitorResponse},
     session::Framed,
 };
+use log::debug;
 use std::io::Error;
 use tokio::sync::mpsc::Sender;
 pub struct CliSession {
@@ -23,7 +23,7 @@ pub struct CliSession {
 #[derive(Debug)]
 pub enum CliResponse {
     Addr(Recipient<CliMessage>),
-    Resp(common::cli::Cli),
+    Resp(inn_common::cli::Cli),
 }
 impl Actor for CliSession {
     type Context = Context<Self>;
@@ -63,7 +63,7 @@ impl Handler<CliMessage> for CliSession {
     fn handle(&mut self, msg: CliMessage, _ctx: &mut Self::Context) -> Self::Result {
         debug!("handle={:?}", msg);
         let CliMessage::Rpc(rpc) = msg;
-        let cli: common::cli::Cli = rpc.into();
+        let cli: inn_common::cli::Cli = rpc.into();
         self.framed.write(VisitorResponse::Cli(cli));
     }
 }

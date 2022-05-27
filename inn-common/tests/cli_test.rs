@@ -7,7 +7,7 @@
 // @end
 // Created : 2022-04-19T01:08:15+08:00
 //-------------------------------------------------------------------
-use common::cli::Cli;
+use inn_common::cli::Cli;
 #[test]
 fn test_simplestring_to_cli() {
     let cli: Cli = String::from("+OK\r\n").into();

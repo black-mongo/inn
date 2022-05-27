@@ -11,7 +11,6 @@
 use std::convert::Infallible;
 use std::sync::Arc;
 
-use common::genca::CertAuthority;
 use http::uri::PathAndQuery;
 use hyper::client::HttpConnector;
 use hyper::server::conn::{AddrStream, Http};
@@ -19,6 +18,7 @@ use hyper::service::{make_service_fn, service_fn};
 use hyper::upgrade::Upgraded;
 use hyper::{Body, Client, Method, Request, Response, Server};
 use hyper_rustls::{HttpsConnector, HttpsConnectorBuilder};
+use inn_common::genca::CertAuthority;
 use log::{debug, error, info};
 use tokio::net::TcpStream;
 use tokio_rustls::TlsAcceptor;

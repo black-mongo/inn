@@ -8,7 +8,7 @@
 // Created : 2022-04-14T11:20:42+08:00
 //-------------------------------------------------------------------
 use actix::System;
-use network::{proxy::Proxy, NetWork};
+use inn_network::{proxy::Proxy, NetWork};
 #[actix_rt::main]
 async fn main() {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("debug"));

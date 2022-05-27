@@ -278,7 +278,7 @@ dependencies = [
  "serde_urlencoded",
  "smallvec",
  "socket2 0.4.4",
- "time 0.3.9",
+ "time",
  "url",
 ]
 
@@ -393,7 +393,7 @@ dependencies = [
  "num-traits",
  "rusticata-macros",
  "thiserror",
- "time 0.3.9",
+ "time",
 ]
 
 [[package]]
@@ -654,21 +654,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "common"
-version = "0.1.0"
-dependencies = [
- "env_logger",
- "http",
- "log",
- "moka",
- "pem",
- "rcgen",
- "rustls 0.20.5",
- "rustls-pemfile 0.3.0",
- "time 0.3.9",
-]
-
-[[package]]
 name = "concurrent-queue"
 version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -690,7 +675,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94d4706de1b0fa5b132270cddffa8585166037822e260a944fe161acd137ca05"
 dependencies = [
  "percent-encoding",
- "time 0.3.9",
+ "time",
  "version_check",
 ]
 
@@ -1340,9 +1325,55 @@ dependencies = [
  "actix 0.13.0",
  "actix-rt 2.7.0",
  "env_logger",
+ "inn-network",
  "log",
- "network",
  "tokio 1.18.2",
+]
+
+[[package]]
+name = "inn-common"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "http",
+ "log",
+ "moka",
+ "pem",
+ "rcgen",
+ "rustls 0.20.5",
+ "rustls-pemfile 0.3.0",
+ "time",
+]
+
+[[package]]
+name = "inn-network"
+version = "0.1.0"
+dependencies = [
+ "actix 0.13.0",
+ "actix-codec",
+ "actix-files",
+ "actix-rt 2.7.0",
+ "actix-web",
+ "actix-web-actors",
+ "byteorder",
+ "bytes 1.1.0",
+ "env_logger",
+ "futures-util",
+ "http",
+ "hyper",
+ "hyper-proxy",
+ "hyper-rustls 0.23.0",
+ "inn-common",
+ "log",
+ "rand 0.8.5",
+ "rustls-pemfile 1.0.0",
+ "serde",
+ "serde_json",
+ "tokio 1.18.2",
+ "tokio-rustls 0.23.4",
+ "tokio-stream",
+ "tokio-util 0.7.1",
+ "webpki-roots 0.22.3",
 ]
 
 [[package]]
@@ -1352,13 +1383,25 @@ dependencies = [
  "actix 0.13.0",
  "actix-rt 2.7.0",
  "clap",
- "common",
  "env_logger",
+ "inn-common",
+ "inn-network",
  "log",
- "network",
  "tokio 1.18.2",
  "tokio-stream",
  "tokio-util 0.7.1",
+]
+
+[[package]]
+name = "inn_plugins"
+version = "0.1.0"
+
+[[package]]
+name = "inn_time"
+version = "0.1.0"
+dependencies = [
+ "actix 0.10.0",
+ "ordermap",
 ]
 
 [[package]]
@@ -1679,37 +1722,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "network"
-version = "0.1.0"
-dependencies = [
- "actix 0.13.0",
- "actix-codec",
- "actix-files",
- "actix-rt 2.7.0",
- "actix-web",
- "actix-web-actors",
- "byteorder",
- "bytes 1.1.0",
- "common",
- "env_logger",
- "futures-util",
- "http",
- "hyper",
- "hyper-proxy",
- "hyper-rustls 0.23.0",
- "log",
- "rand 0.8.5",
- "rustls-pemfile 1.0.0",
- "serde",
- "serde_json",
- "tokio 1.18.2",
- "tokio-rustls 0.23.4",
- "tokio-stream",
- "tokio-util 0.7.1",
- "webpki-roots 0.22.3",
-]
-
-[[package]]
 name = "nom"
 version = "7.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1924,10 +1936,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
-name = "plugins"
-version = "0.1.0"
-
-[[package]]
 name = "polling"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2109,7 +2117,7 @@ checksum = "d7fa2d386df8533b02184941c76ae2e0d0c1d053f5d43339169d80f21275fc5e"
 dependencies = [
  "pem",
  "ring",
- "time 0.3.9",
+ "time",
  "x509-parser",
  "yasna",
 ]
@@ -2559,14 +2567,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d050e60b33d41c19108b32cea32164033a9013fe3b46cbd4457559bfbf77afaa"
 dependencies = [
  "num_cpus",
-]
-
-[[package]]
-name = "time"
-version = "0.1.0"
-dependencies = [
- "actix 0.10.0",
- "ordermap",
 ]
 
 [[package]]
@@ -3204,7 +3204,7 @@ dependencies = [
  "ring",
  "rusticata-macros",
  "thiserror",
- "time 0.3.9",
+ "time",
 ]
 
 [[package]]
@@ -3213,7 +3213,7 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "346d34a236c9d3e5f3b9b74563f238f955bbd05fa0b8b4efa53c130c43982f4c"
 dependencies = [
- "time 0.3.9",
+ "time",
 ]
 
 [[package]]

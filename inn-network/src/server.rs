@@ -83,7 +83,7 @@ impl Handler<ToProxyServer> for ProxyServer {
                     (Some(session), [c]) if c == "online_counter" => {
                         let len = self.sessions.len();
                         session.do_send(ToSession::ProxyServerReply(ProxyServerReply::Cli(
-                            common::cli::Cli::Integers(len as i64),
+                            inn_common::cli::Cli::Integers(len as i64),
                         )));
                     }
                     (Some(session), [c]) if c == "stop" => {
