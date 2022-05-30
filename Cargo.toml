@@ -1,2 +1,2 @@
 [workspace]
-members = ["inn-network","inn-plugins","inn","inn-time","inn-cli", "inn-common"]
+members = ["inn-network","inn-plugins","inn","inn-time","inn-cli", "inn-common", "inn-app"]
