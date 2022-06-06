@@ -10,6 +10,9 @@
 
 use actix::Message;
 use actix::Recipient;
+use http::HeaderMap;
+use http::StatusCode;
+use http::Uri;
 
 use crate::codec::DstAddress;
 // Command Message to session actor
@@ -43,6 +46,12 @@ pub enum ToProxyServer {
     DisConnect(usize),
     OnlineCounter(usize),
     Cli(usize, inn_common::cli::Cli),
+    HttpReq {
+        uri: Uri,
+        headers: HeaderMap,
+        status: StatusCode,
+        error: String,
+    },
 }
 #[derive(Debug, PartialEq)]
 pub enum ProxyServerReply {

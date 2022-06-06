@@ -93,6 +93,18 @@ impl Handler<ToProxyServer> for ProxyServer {
                 }
                 MessageResult(ProxyServerReply::Ok)
             }
+            ToProxyServer::HttpReq {
+                uri,
+                headers,
+                status,
+                error,
+            } => {
+                debug!(
+                    "uri:{}, headers:{:?}, status:{}, error:{}",
+                    uri, headers, status, error
+                );
+                MessageResult(ProxyServerReply::Ok)
+            }
         }
     }
 }

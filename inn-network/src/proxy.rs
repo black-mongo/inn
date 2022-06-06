@@ -11,7 +11,9 @@
 use std::convert::Infallible;
 use std::sync::Arc;
 
+use actix::{Addr, Recipient};
 use http::uri::PathAndQuery;
+use http::StatusCode;
 use hyper::client::HttpConnector;
 use hyper::server::conn::{AddrStream, Http};
 use hyper::service::{make_service_fn, service_fn};
@@ -22,10 +24,14 @@ use inn_common::genca::CertAuthority;
 use log::{debug, error, info};
 use tokio::net::TcpStream;
 use tokio_rustls::TlsAcceptor;
+
+use crate::server::ProxyServer;
+use crate::ToProxyServer;
 #[derive(Clone)]
 pub struct Proxy {
     ca: Arc<CertAuthority>,
     client: Client<HttpsConnector<HttpConnector>>,
+    server: Recipient<ToProxyServer>,
 }
 // To try this example:
 // 1. cargo run --example http_proxy
@@ -35,7 +41,7 @@ pub struct Proxy {
 // 3. send requests
 //    $ curl -i https://www.some_domain.com/
 impl Proxy {
-    pub async fn start_proxy(ip: &str, cacert: &str, cakey: &str) {
+    pub async fn start_proxy(ip: &str, cacert: &str, cakey: &str, server: Addr<ProxyServer>) {
         let addr = ip.parse().expect("invalid ip");
         let https = HttpsConnectorBuilder::new()
             .with_webpki_roots()
@@ -50,12 +56,14 @@ impl Proxy {
         let ca = Arc::new(CertAuthority::new(cacert.to_string(), cakey.to_string()));
         let make_service = make_service_fn(move |_conn: &AddrStream| {
             let client = client.clone();
+            let server = server.clone();
             let ca = Arc::clone(&ca);
             async move {
                 Ok::<_, Infallible>(service_fn(move |req| {
                     Proxy {
                         ca: Arc::clone(&ca),
                         client: client.clone(),
+                        server: server.clone().recipient(),
                     }
                     .proxy(req)
                 }))
@@ -123,9 +131,10 @@ impl Proxy {
                 Ok(resp)
             }
         } else {
-            self.client.request(req).await
+            self.request(req).await
         }
     }
+
     async fn serve_https(
         self,
         stream: tokio_rustls::server::TlsStream<Upgraded>,
@@ -155,8 +164,8 @@ impl Proxy {
                 parts.uri = uri;
                 req = Request::from_parts(parts, body)
             };
-            debug!("uri = {}, headers = {:?}", req.uri(), req.headers());
-            self.client.request(req)
+            // self.client.request(req)
+            self.clone().request(req)
         });
 
         Http::new()
@@ -167,7 +176,33 @@ impl Proxy {
     fn host_addr(uri: &http::Uri) -> Option<String> {
         uri.authority().map(|auth| auth.to_string())
     }
-
+    ///
+    ///
+    async fn request(self, req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
+        let uri = req.uri().clone();
+        let headers = req.headers().clone();
+        let _body = req.body();
+        let rs = self.client.request(req).await;
+        match &rs {
+            Ok(resp) => {
+                self.server.do_send(ToProxyServer::HttpReq {
+                    uri,
+                    headers,
+                    status: resp.status(),
+                    error: "".to_owned(),
+                });
+            }
+            Err(e) => {
+                self.server.do_send(ToProxyServer::HttpReq {
+                    uri,
+                    headers,
+                    status: StatusCode::NO_CONTENT,
+                    error: format!("{}", e),
+                });
+            }
+        }
+        rs
+    }
     // Create a TCP connection to host:port, build a tunnel between the connection and
     // the upgraded connection
     async fn tunnel(mut upgraded: Upgraded, addr: &str) -> std::io::Result<()> {
@@ -177,6 +212,9 @@ impl Proxy {
         Ok(())
     }
     fn mitm_match(host: &str, port: &str) -> bool {
-        matches!((host, port), ("github.com", _) | ("www.github.com", _))
+        matches!(
+            (host, port),
+            ("github.com", _) | ("www.github.com", _) | ("baidu.com", _) | ("www.baidu.com", _)
+        )
     }
 }
