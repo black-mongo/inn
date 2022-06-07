@@ -10,8 +10,8 @@
 use actix::prelude::*;
 use byteorder::BigEndian;
 use byteorder::ByteOrder;
-use inn_network::*;
 use inn_network::server::ProxyServer;
+use inn_network::*;
 use std::vec::Vec;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
@@ -133,50 +133,55 @@ async fn ct() {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("trace"));
     let server = ProxyServer::default().start();
     let _ = NetWork
-        .start("127.0.0.1", 4555, || {
-            // Connect to server
-            actix::spawn(async {
-                let mut stream = TcpStream::connect("127.0.0.1:4555").await.unwrap();
-                stream.write_all(&[5, 1, 0]).await.unwrap();
-                let mut state = State::Undefined;
-                loop {
-                    let _ = stream.readable().await;
-                    let mut buf = Vec::with_capacity(40);
-                    match (&state, stream.try_read_buf(&mut buf)) {
-                        (_, Ok(0)) => continue,
-                        (State::Undefined, Ok(2)) => {
-                            assert_eq!(buf, vec![5, 2]);
-                            let rs: Vec<u8> = Auth::default().into();
-                            stream.write_all(rs.as_slice()).await.unwrap();
-                            state = State::Auth;
-                        }
-                        (State::Auth, Ok(2)) => {
-                            assert_eq!(buf, vec![5, 0]);
-                            let rs: Vec<u8> = Connection::default().into();
-                            stream.write_all(rs.as_slice()).await.unwrap();
-                            state = State::Connection;
-                        }
-                        (State::Connection, Ok(_)) => {
-                            // assert_eq!(buf, vec![5, 2]);
-                            state = State::Forward;
-                            stream.write_all(&[5, 1, 0]).await.unwrap();
-                        }
-                        (State::Forward, Ok(3)) => {
-                            assert_eq!(buf, vec![5, 2]);
-                            break;
-                        }
-                        (_, Ok(_)) => {
-                            continue;
-                        }
-                        (_, Err(ref e)) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                            continue;
-                        }
-                        (_, Err(e)) => {
-                            panic!("{:?}", e)
+        .start(
+            "127.0.0.1",
+            4555,
+            || {
+                // Connect to server
+                actix::spawn(async {
+                    let mut stream = TcpStream::connect("127.0.0.1:4555").await.unwrap();
+                    stream.write_all(&[5, 1, 0]).await.unwrap();
+                    let mut state = State::Undefined;
+                    loop {
+                        let _ = stream.readable().await;
+                        let mut buf = Vec::with_capacity(40);
+                        match (&state, stream.try_read_buf(&mut buf)) {
+                            (_, Ok(0)) => continue,
+                            (State::Undefined, Ok(2)) => {
+                                assert_eq!(buf, vec![5, 2]);
+                                let rs: Vec<u8> = Auth::default().into();
+                                stream.write_all(rs.as_slice()).await.unwrap();
+                                state = State::Auth;
+                            }
+                            (State::Auth, Ok(2)) => {
+                                assert_eq!(buf, vec![5, 0]);
+                                let rs: Vec<u8> = Connection::default().into();
+                                stream.write_all(rs.as_slice()).await.unwrap();
+                                state = State::Connection;
+                            }
+                            (State::Connection, Ok(_)) => {
+                                // assert_eq!(buf, vec![5, 2]);
+                                state = State::Forward;
+                                stream.write_all(&[5, 1, 0]).await.unwrap();
+                            }
+                            (State::Forward, Ok(3)) => {
+                                assert_eq!(buf, vec![5, 2]);
+                                break;
+                            }
+                            (_, Ok(_)) => {
+                                continue;
+                            }
+                            (_, Err(ref e)) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                                continue;
+                            }
+                            (_, Err(e)) => {
+                                panic!("{:?}", e)
+                            }
                         }
                     }
-                }
-            });
-        }, server.clone())
+                });
+            },
+            server.clone(),
+        )
         .await;
 }
