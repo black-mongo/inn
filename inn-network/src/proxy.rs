@@ -8,12 +8,12 @@
 // Created : 2022-05-25T00:49:22+08:00
 //-------------------------------------------------------------------
 
+use std::collections::HashMap;
 use std::convert::Infallible;
 use std::sync::Arc;
 
 use actix::{Addr, Recipient};
 use http::uri::PathAndQuery;
-use http::StatusCode;
 use hyper::client::HttpConnector;
 use hyper::server::conn::{AddrStream, Http};
 use hyper::service::{make_service_fn, service_fn};
@@ -26,7 +26,7 @@ use tokio::net::TcpStream;
 use tokio_rustls::TlsAcceptor;
 
 use crate::server::ProxyServer;
-use crate::ToProxyServer;
+use crate::{ToProxyServer, WsHttpReq};
 #[derive(Clone)]
 pub struct Proxy {
     ca: Arc<CertAuthority>,
@@ -181,24 +181,46 @@ impl Proxy {
     async fn request(self, req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
         let uri = req.uri().clone();
         let headers = req.headers().clone();
-        let _body = req.body();
+        let body = format!("{:?}", req.body());
+        let method = req.method().as_str().to_string();
+        let ver = format!("{:?}", req.version());
+        let host = Proxy::host_addr(req.uri()).unwrap();
         let rs = self.client.request(req).await;
         match &rs {
             Ok(resp) => {
-                self.server.do_send(ToProxyServer::HttpReq {
-                    uri,
-                    headers,
-                    status: resp.status(),
-                    error: "".to_owned(),
-                });
+                let mut h = HashMap::new();
+                for (k, v) in &headers {
+                    h.insert(k.to_string(), v.to_str().unwrap().to_string());
+                }
+                let mut resp_h = HashMap::new();
+                for (k, v) in resp.headers() {
+                    resp_h.insert(k.to_string(), v.to_str().unwrap().to_string());
+                }
+
+                self.server
+                    .do_send(ToProxyServer::HttpReq(Box::new(WsHttpReq {
+                        id: "0".to_string(),
+                        uri: uri.to_string(),
+                        headers: h,
+                        status: resp.status().as_u16(),
+                        error: "".to_owned(),
+                        method,
+                        req_body: body,
+                        server_ip: "".to_string(),
+                        protocol: ver,
+                        host,
+                        resp_headers: resp_h,
+                        resp_body: format!("{:?}", resp.body()),
+                        time: "".to_string(),
+                    })));
             }
-            Err(e) => {
-                self.server.do_send(ToProxyServer::HttpReq {
-                    uri,
-                    headers,
-                    status: StatusCode::NO_CONTENT,
-                    error: format!("{}", e),
-                });
+            Err(_e) => {
+                // self.server.do_send(ToProxyServer::HttpReq {
+                //     uri,
+                //     headers,
+                //     status: StatusCode::NO_CONTENT,
+                //     error: format!("{}", e),
+                // });
             }
         }
         rs
