@@ -15,6 +15,7 @@ pub use messages::*;
 use server::ProxyServer;
 pub use session::*;
 pub mod proxy;
+pub mod ws;
 use crate::codec::{VisitorCodec, T};
 use actix::prelude::StreamHandler;
 use actix::{Actor, Addr};

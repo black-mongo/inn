@@ -1325,7 +1325,7 @@ dependencies = [
  "actix 0.13.0",
  "actix-rt 2.7.0",
  "env_logger",
- "inn-network 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "inn-network 0.1.0",
  "log",
  "tokio 1.18.2",
 ]
