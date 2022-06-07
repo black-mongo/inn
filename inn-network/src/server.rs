@@ -93,16 +93,12 @@ impl Handler<ToProxyServer> for ProxyServer {
                 }
                 MessageResult(ProxyServerReply::Ok)
             }
-            ToProxyServer::HttpReq {
-                uri,
-                headers,
-                status,
-                error,
-            } => {
-                debug!(
-                    "uri:{}, headers:{:?}, status:{}, error:{}",
-                    uri, headers, status, error
-                );
+            ToProxyServer::HttpReq(http_req) => {
+                debug!("{:?}", http_req);
+                let msg = ToSession::ProxyServerReply(ProxyServerReply::HttpReq(http_req));
+                for s in self.sessions.values() {
+                    s.do_send(msg.clone());
+                }
                 MessageResult(ProxyServerReply::Ok)
             }
         }
