@@ -11,6 +11,7 @@ use actix::prelude::*;
 use byteorder::BigEndian;
 use byteorder::ByteOrder;
 use inn_network::*;
+use inn_network::server::ProxyServer;
 use std::vec::Vec;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
@@ -130,6 +131,7 @@ async fn ct() {
     }
 
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("trace"));
+    let server = ProxyServer::default().start();
     let _ = NetWork
         .start("127.0.0.1", 4555, || {
             // Connect to server
@@ -175,6 +177,6 @@ async fn ct() {
                     }
                 }
             });
-        })
+        }, server.clone())
         .await;
 }
