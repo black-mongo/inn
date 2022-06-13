@@ -555,12 +555,28 @@ Ensure the default browser behavior of the `hidden` attribute.
   width: 8rem;
 }
 
+.w-full {
+  width: 100%;
+}
+
 .max-w-md {
   max-width: 28rem;
 }
 
+.table-auto {
+  table-layout: auto;
+}
+
 .table-fixed {
   table-layout: fixed;
+}
+
+.resize-x {
+  resize: horizontal;
+}
+
+.resize {
+  resize: both;
 }
 
 .flex-col {

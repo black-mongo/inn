@@ -128,50 +128,13 @@ impl Component for Home {
         for row in self.messages.iter() {
             log::debug!("{:?}", row)
         }
-        html! {
-            <>
-            <div class="overflow-auto">
-            <table class="table-fixed border border-b-1 border-gray-200 text-left text-gray-600">
-            <thead >
-                <tr>
-                    <th class="w-16">
-                       {"#"}
-                    </th>
-                    <th class="w-16">
-                       {"Result"}
-                    </th>
-                    <th class="w-20">
-                        {"Method"}
-                    </th>
-                    <th class="w-24">
-                        {"Protocol"}
-                    </th>
-                    <th class="w-28">
-                        {"ServerIP"}
-                    </th>
-                    <th class="w-36">
-                        {"Host"}
-                    </th>
-                    <th class="w-36">
-                        {"URL"}
-                    </th>
-                    <th class="w-32">
-                        {"Type"}
-                    </th>
-                    <th class="w-20">
-                        {"Time"}
-                    </th>
-                </tr>
-            </thead>
-            </table>
-            {
-            self.messages.iter().map(|m|{
-                    html!{
-                        <table class="table-fixed border border-t-0 border-gray-200 text-left">
+        let (_, list) = self.messages.iter().fold((0_i32,Vec::<Html>::new()),|(i,mut acc),m|{
+                    let a = html!{
+                        <table class="table-fixed w-full border border-t-0 border-gray-200 text-left">
                         <tbody>
                 <tr class="broder hover:bg-black hover:text-white hover:cursor-pointer overflow-hidden whitespace-nowrap overflow-ellipsis">
                     <td class="w-16">
-                        {"1"}
+                        {i}
                     </td>
                     <td class="w-16">
                         {m.status}
@@ -189,8 +152,8 @@ impl Component for Home {
                     <td class="w-36">
                         {m.host.clone()}
                     </td>
-                    <td class="w-36">
-                        <div class="w-36 overflow-hidden whitespace-nowrap overflow-ellipsis">
+                    <td class="">
+                        <div class="overflow-hidden whitespace-nowrap overflow-ellipsis">
                         {m.uri.clone()}
                         </div>
                     </td>
@@ -204,11 +167,51 @@ impl Component for Home {
                 </tr>
                 </tbody>
                 </table>
-            }
-            }).collect::<Html>()
-        }
-         </div>
-         </>
-            }
+            };
+            acc.push(a);
+            (i+1, acc)
+            });
+        html! {
+           <>
+           <div class="overflow-auto">
+           <table class="table-fixed w-full border border-b-1 border-gray-200 text-left text-gray-600">
+           <thead >
+               <tr>
+                   <th class="w-16">
+                      {"#"}
+                   </th>
+                   <th class="w-16">
+                      {"Result"}
+                   </th>
+                   <th class="w-20">
+                       {"Method"}
+                   </th>
+                   <th class="w-24">
+                       {"Protocol"}
+                   </th>
+                   <th class="w-28">
+                       {"ServerIP"}
+                   </th>
+                   <th class="w-36">
+                       {"Host"}
+                   </th>
+                   <th class="">
+                       {"URL"}
+                   </th>
+                   <th class="w-32">
+                       {"Type"}
+                   </th>
+                   <th class="w-20">
+                       {"Time"}
+                   </th>
+               </tr>
+           </thead>
+           </table>
+           {
+               list.into_iter().rev().collect::<Html>()
+           }
+        </div>
+        </>
+           }
     }
 }
