@@ -1,10 +1,12 @@
-use std::vec;
+use std::{collections::HashMap, vec};
 
+use serde_json::Value;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
+use yew_agent::{Bridge, Bridged};
 
 use super::app::{AppContext, Route};
-use crate::network::WebsocketService;
+use crate::{network::WebsocketService, pubsub::EventBus};
 use serde::{Deserialize, Serialize};
 use yew_router::prelude::*;
 
@@ -14,16 +16,16 @@ struct UserProfile {
     avatar: String,
 }
 
-
 pub struct Home {
     ws: WebsocketService,
     users: Vec<UserProfile>,
     input: NodeRef,
-    messages: Vec<MessageData>
+    messages: Vec<WsHttpReq>,
+    _producer: Box<dyn Bridge<EventBus>>,
 }
+#[derive(Debug)]
 pub enum Msg {
     HandleMsg(String),
-    SubmitMessage,
 }
 #[derive(Deserialize)]
 struct MessageData {
@@ -39,11 +41,32 @@ pub enum MsgTypes {
     Message,
 }
 #[derive(Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct WebSocketMessage {
-    message_type: MsgTypes,
-    data_array: Option<Vec<String>>,
-    data: Option<String>,
+#[serde(rename_all = "lowercase")]
+pub enum MsgName {
+    HttpReq,
+}
+#[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub struct WsHttpReq {
+    pub id: String,
+    pub uri: String,
+    pub headers: HashMap<String, String>,
+    pub status: u16,
+    pub error: String,
+    pub method: String,
+    pub req_body: String,
+    pub time: String,
+    pub host: String,
+    pub server_ip: String,
+    pub protocol: String,
+    pub resp_headers: HashMap<String, String>,
+    pub resp_body: String,
+}
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub struct WsMsg<T> {
+    pub msg_name: MsgName,
+    pub msg: T,
 }
 impl Component for Home {
     type Message = Msg;
@@ -54,138 +77,138 @@ impl Component for Home {
             .link()
             .context::<AppContext>(Callback::noop())
             .expect("context to be set");
-        let message = WebSocketMessage {
-            message_type: MsgTypes::Register,
-            data: Some(app_ctx.user.clone().into_inner()),
-            data_array: None,
-        };
+        // let message = WebSocketMessage {
+        //     message_type: MsgTypes::Register,
+        //     data: Some(app_ctx.user.clone().into_inner()),
+        //     data_array: None,
+        // };
         let ws = WebsocketService::new();
-        if let Ok(_) = ws
-            .tx
-            .clone()
-            .try_send(serde_json::to_string(&message).unwrap())
-        {
-            log::debug!("message sent successfully");
+        // if let Ok(_) = ws
+        //     .tx
+        //     .clone()
+        //     .try_send(serde_json::to_string(&message).unwrap())
+        // {
+        //     log::debug!("message sent successfully");
+        // }
+        Self {
+            ws,
+            users: vec![],
+            messages: vec![],
+            input: NodeRef::default(),
+            _producer: EventBus::bridge(ctx.link().callback(Msg::HandleMsg)),
         }
-        Self { ws, users: vec![], messages: vec![], input: NodeRef::default() }
     }
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+        log::debug!("{:?}", msg);
         match msg {
             Msg::HandleMsg(s) => {
-                let msg: WebSocketMessage = serde_json::from_str(&s).unwrap();
-                match msg.message_type {
-                    MsgTypes::Users => {
-                        let users_from_message = msg.data_array.unwrap_or_default();
-                        self.users = users_from_message
-                            .iter()
-                            .map(|u| UserProfile {
-                                name: u.into(),
-                                avatar: format!(
-                                    "https://avatars.dicebear.com/api/adventurer-neutral/{}.svg",
-                                    u
-                                )
-                                .into(),
-                            })
-                            .collect();
-                        return true;
-                    }
-                    MsgTypes::Message => {
-                        let message_data: MessageData =
-                            serde_json::from_str(&msg.data.unwrap()).unwrap();
-                        self.messages.push(message_data);
-                        return true;
+                let msg: Value = serde_json::from_str(&s).unwrap();
+                match &msg["msg_name"] {
+                    Value::String(s) => {
+                        let msg_name: MsgName =
+                            serde_json::from_value(Value::String(s.clone())).unwrap();
+                        match msg_name {
+                            MsgName::HttpReq => {
+                                let msg: WsHttpReq =
+                                    serde_json::from_value(msg["msg"].clone()).unwrap();
+                                self.messages.push(msg);
+                                return true;
+                            }
+                        }
                     }
                     _ => {
                         return false;
                     }
                 }
             }
-            Msg::SubmitMessage => {
-                let input = self.input.cast::<HtmlInputElement>();
-                if let Some(input) = input {
-                    let message = WebSocketMessage {
-                        message_type: MsgTypes::Message,
-                        data: Some(input.value()),
-                        data_array: None,
-                    };
-                    if let Err(e) = self
-                        .ws
-                        .tx
-                        .clone()
-                        .try_send(serde_json::to_string(&message).unwrap())
-                    {
-                        log::debug!("error sending to channel: {:?}", e);
-                    }
-                    input.set_value("");
-                };
-                false
-            }
         }
     }
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let submit = ctx.link().callback(|_| Msg::SubmitMessage);
-
-        html! {
-            <div class="flex w-screen">
-                <div class="flex-none w-56 h-screen bg-gray-100">
-                    <div class="text-xl p-3">{"Users"}</div>
-                    {
-                        self.users.clone().iter().map(|u| {
-                            html!{
-                                <div class="flex m-3 bg-white rounded-lg p-2">
-                                    <div>
-                                        <img class="w-12 h-12 rounded-full" src={u.avatar.clone()} alt="avatar"/>
-                                    </div>
-                                    <div class="flex-grow p-3">
-                                        <div class="flex text-xs justify-between">
-                                            <div>{u.name.clone()}</div>
-                                        </div>
-                                        <div class="text-xs text-gray-400">
-                                            {"Hi there!"}
-                                        </div>
-                                    </div>
-                                </div>
-                            }
-                        }).collect::<Html>()
-                    }
-                </div>
-                <div class="grow h-screen flex flex-col">
-                    <div class="w-full h-14 border-b-2 border-gray-300"><div class="text-xl p-3">{"💬 Chat!"}</div></div>
-                    <div class="w-full grow overflow-auto border-b-2 border-gray-300">
-                        {
-                            self.messages.iter().map(|m| {
-                                let user = self.users.iter().find(|u| u.name == m.from).unwrap();
-                                html!{
-                                    <div class="flex items-end w-3/6 bg-gray-100 m-8 rounded-tl-lg rounded-tr-lg rounded-br-lg ">
-                                        <img class="w-8 h-8 rounded-full m-3" src={user.avatar.clone()} alt="avatar"/>
-                                        <div class="p-3">
-                                            <div class="text-sm">
-                                                {m.from.clone()}
-                                            </div>
-                                            <div class="text-xs text-gray-500">
-                                                if m.message.ends_with(".gif") {
-                                                    <img class="mt-3" src={m.message.clone()}/>
-                                                } else {
-                                                    {m.message.clone()}
-                                                }
-                                            </div>
-                                        </div>
-                                    </div>
-                                }
-                            }).collect::<Html>()
-                        }
-
-                    </div>
-                    <div class="w-full h-14 flex px-3 items-center">
-                        <input ref={self.input.clone()} type="text" placeholder="Message" class="block w-full py-2 pl-4 mx-3 bg-gray-100 rounded-full outline-none focus:text-gray-700" name="message" required=true />
-                        <button onclick={submit} class="p-3 shadow-sm bg-blue-600 w-10 h-10 rounded-full flex justify-center items-center color-white">
-                            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="fill-white">
-                                <path d="M0 0h24v24H0z" fill="none"></path><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
+        // let submit = ctx.link().callback(|_| Msg::SubmitMessage);
+        for row in self.messages.iter() {
+            log::debug!("{:?}", row)
         }
-     }
+        html! {
+            <>
+            <div class="overflow-auto">
+            <table class="table-fixed border border-b-1 border-gray-200 text-left text-gray-600">
+            <thead >
+                <tr>
+                    <th class="w-16">
+                       {"#"}
+                    </th>
+                    <th class="w-16">
+                       {"Result"}
+                    </th>
+                    <th class="w-20">
+                        {"Method"}
+                    </th>
+                    <th class="w-24">
+                        {"Protocol"}
+                    </th>
+                    <th class="w-28">
+                        {"ServerIP"}
+                    </th>
+                    <th class="w-36">
+                        {"Host"}
+                    </th>
+                    <th class="w-36">
+                        {"URL"}
+                    </th>
+                    <th class="w-32">
+                        {"Type"}
+                    </th>
+                    <th class="w-20">
+                        {"Time"}
+                    </th>
+                </tr>
+            </thead>
+            </table>
+            {
+            self.messages.iter().map(|m|{
+                    html!{
+                        <table class="table-fixed border border-t-0 border-gray-200 text-left">
+                        <tbody>
+                <tr class="broder hover:bg-black hover:text-white hover:cursor-pointer overflow-hidden whitespace-nowrap overflow-ellipsis">
+                    <td class="w-16">
+                        {"1"}
+                    </td>
+                    <td class="w-16">
+                        {m.status}
+                    </td>
+                    <td class="w-20">
+                        {m.method.clone()}
+                    </td>
+                    <td class="w-24">
+                        {m.protocol.clone()}
+                    </td>
+
+                    <td class="w-28">
+                        {m.server_ip.clone()}
+                    </td>
+                    <td class="w-36">
+                        {m.host.clone()}
+                    </td>
+                    <td class="w-36">
+                        <div class="w-36 overflow-hidden whitespace-nowrap overflow-ellipsis">
+                        {m.uri.clone()}
+                        </div>
+                    </td>
+
+                    <td class="w-32">
+                        {m.status}
+                    </td>
+                    <td class="w-20">
+                        {m.time.clone()}
+                    </td>
+                </tr>
+                </tbody>
+                </table>
+            }
+            }).collect::<Html>()
+        }
+         </div>
+         </>
+            }
+    }
 }

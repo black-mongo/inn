@@ -1,5 +1,5 @@
 use futures::{channel::mpsc::Sender, SinkExt, StreamExt};
-use reqwasm::websocket::{futures::WebSocket, Message};
+use reqwasm::websocket::{futures::WebSocket, Message, WebSocketError};
 
 use wasm_bindgen_futures::spawn_local;
 use yew_agent::Dispatched;
@@ -12,7 +12,7 @@ pub struct WebsocketService {
 
 impl WebsocketService {
     pub fn new() -> Self {
-        let ws = WebSocket::open("ws://127.0.0.1:8080").unwrap();
+        let ws = WebSocket::open("ws://127.0.0.1:4558/ws/").unwrap();
 
         let (mut write, mut read) = ws.split();
 
