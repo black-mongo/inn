@@ -129,7 +129,9 @@ impl Component for Home {
             log::debug!("{:?}", row)
         }
         let (_, list) = self.messages.iter().fold((0_i32,Vec::<Html>::new()),|(i,mut acc),m|{
-                    let a = html!{
+                    let t= m.resp_headers["content-type"].clone();
+                    let tlist: Vec<&str> = t.split(';').collect();
+                    let table = html!{
                         <table class="table-fixed w-full border border-t-0 border-gray-200 text-left">
                         <tbody>
                 <tr class="broder hover:bg-black hover:text-white hover:cursor-pointer overflow-hidden whitespace-nowrap overflow-ellipsis">
@@ -159,7 +161,7 @@ impl Component for Home {
                     </td>
 
                     <td class="w-32">
-                        {m.status}
+                        {tlist[0]}
                     </td>
                     <td class="w-20">
                         {m.time.clone()}
@@ -168,7 +170,7 @@ impl Component for Home {
                 </tbody>
                 </table>
             };
-            acc.push(a);
+            acc.push(table);
             (i+1, acc)
             });
         html! {
