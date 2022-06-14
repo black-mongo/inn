@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use std::convert::Infallible;
 use std::sync::Arc;
 
+use actix::clock::Instant;
 use actix::{Addr, Recipient};
 use http::uri::PathAndQuery;
 use hyper::client::HttpConnector;
@@ -185,6 +186,7 @@ impl Proxy {
         let method = req.method().as_str().to_string();
         let ver = format!("{:?}", req.version());
         let host = Proxy::host_addr(req.uri()).unwrap();
+        let start = Instant::now();
         let rs = self.client.request(req).await;
         match &rs {
             Ok(resp) => {
@@ -200,7 +202,9 @@ impl Proxy {
                 self.server
                     .do_send(ToProxyServer::HttpReq(Box::new(WsHttpReq {
                         id: "0".to_string(),
-                        uri: uri.to_string(),
+                        uri: uri
+                            .path_and_query()
+                            .map_or_else(|| "".to_string(), |x| x.to_string()),
                         headers: h,
                         status: resp.status().as_u16(),
                         error: "".to_owned(),
@@ -211,7 +215,7 @@ impl Proxy {
                         host,
                         resp_headers: resp_h,
                         resp_body: format!("{:?}", resp.body()),
-                        time: "".to_string(),
+                        time: format!("{} ms", start.elapsed().as_millis()),
                     })));
             }
             Err(_e) => {
