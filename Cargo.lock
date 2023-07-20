@@ -1331,6 +1331,8 @@ dependencies = [
 [[package]]
 name = "inn-common"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b8832f7fd38618c139d418bb3a51b6babf7bf233f3ef8bb14013cb2d43b8dce"
 dependencies = [
  "env_logger",
  "http",
@@ -1345,9 +1347,7 @@ dependencies = [
 
 [[package]]
 name = "inn-common"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b8832f7fd38618c139d418bb3a51b6babf7bf233f3ef8bb14013cb2d43b8dce"
+version = "0.2.0"
 dependencies = [
  "env_logger",
  "http",
@@ -1378,7 +1378,7 @@ dependencies = [
  "hyper",
  "hyper-proxy",
  "hyper-rustls 0.23.0",
- "inn-common 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "inn-common 0.1.0",
  "log",
  "rand 0.8.5",
  "rustls-pemfile 1.0.0",
@@ -1411,7 +1411,7 @@ dependencies = [
  "hyper",
  "hyper-proxy",
  "hyper-rustls 0.23.0",
- "inn-common 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "inn-common 0.1.0",
  "log",
  "rand 0.8.5",
  "rustls-pemfile 1.0.0",
@@ -1432,7 +1432,7 @@ dependencies = [
  "actix-rt 2.7.0",
  "clap",
  "env_logger",
- "inn-common 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "inn-common 0.1.0",
  "inn-network 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log",
  "tokio 1.19.2",
