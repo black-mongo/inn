@@ -11,9 +11,11 @@ extern crate rcgen;
 use log::debug;
 use log::error;
 use moka::future::Cache;
+use moka::sync::Cache as SyncCache;
 use pem::Pem;
 use rcgen::*;
 use rustls::ServerConfig;
+use std::char::MAX;
 use std::fs;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -26,6 +28,7 @@ pub struct CertAuthority {
     ca_key: rustls::PrivateKey,
     ca_cert: rustls::Certificate,
     cache: Cache<String, Arc<ServerConfig>>,
+    sync_cache: SyncCache<String, String>,
     serial_number: Arc<Mutex<u64>>,
 }
 impl CertAuthority {
@@ -44,6 +47,7 @@ impl CertAuthority {
             ca_key: private_key,
             ca_cert,
             cache: Cache::new(MAX_CACHE_SIZE),
+            sync_cache: SyncCache::new(MAX_CACHE_SIZE),
             serial_number: Arc::new(Mutex::new(CertAuthority::now_seconds())),
         }
     }
@@ -66,6 +70,15 @@ impl CertAuthority {
             .insert(host.to_string(), Arc::clone(&server_cfg))
             .await;
         server_cfg
+    }
+    pub fn dynamic_gen_cert_pem(&self, host: &str) -> String{
+        if let Some(cert_pem) = self.sync_cache.get(&host.to_string()){
+            return cert_pem;
+        }
+
+        let cert = self.gen_cert_pem(host, 365);
+        self.sync_cache.insert(host.to_string(), cert.clone());
+        cert
     }
     pub fn gen_cert_pem(&self, host: &str, days: i64) -> String {
         let cert = self.gen_cert(host, days);
