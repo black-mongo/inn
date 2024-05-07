@@ -8,14 +8,13 @@
 // Created : 2022-05-17T00:28:36+08:00
 //-------------------------------------------------------------------
 extern crate rcgen;
+use anyhow::Context;
 use log::debug;
-use log::error;
 use moka::future::Cache;
 use moka::sync::Cache as SyncCache;
 use pem::Pem;
 use rcgen::*;
 use rustls::ServerConfig;
-use std::char::MAX;
 use std::fs;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -30,6 +29,8 @@ pub struct CertAuthority {
     cache: Cache<String, Arc<ServerConfig>>,
     sync_cache: SyncCache<String, String>,
     serial_number: Arc<Mutex<u64>>,
+    cert_file: String,
+    key_file: String,
 }
 impl CertAuthority {
     pub fn new(cert_file: String, key_file: String) -> Self {
@@ -44,12 +45,20 @@ impl CertAuthority {
             .expect("Failed to parse CA certificate");
         let ca_cert = rustls::Certificate(ca_cert[0].clone());
         CertAuthority {
+            cert_file,
+            key_file,
             ca_key: private_key,
             ca_cert,
             cache: Cache::new(MAX_CACHE_SIZE),
             sync_cache: SyncCache::new(MAX_CACHE_SIZE),
             serial_number: Arc::new(Mutex::new(CertAuthority::now_seconds())),
         }
+    }
+    pub fn list_cert_pem(&self) -> Vec<(String, String)>{
+        self.sync_cache.iter().map(|(k, v)| ((*k).clone(), v)).collect::<Vec<(String, String)>>()
+    }
+    pub fn list_ca_file(&self) -> (String, String){
+        (self.cert_file.clone(), self.key_file.clone())
     }
     pub async fn dynamic_gen_cert(&self, host: &str) -> Arc<ServerConfig> {
         if let Some(server_config) = self.cache.get(&host.to_string()) {
@@ -135,7 +144,7 @@ impl CertAuthority {
         country_name: String,
         locality_name: String,
         out: String,
-    ) {
+    )-> anyhow::Result<()> {
         let mut params = CertificateParams::default();
         let mut distinguished_name = DistinguishedName::new();
         distinguished_name.push(DnType::CommonName, common_name);
@@ -155,15 +164,11 @@ impl CertAuthority {
         let cert_file = format!("{}/cacert.pem", &out);
         let key_file = format!("{}/cakey.pem", &out);
         debug!("{}\n{}", cert_file, cert_crt);
-        if let Err(err) = fs::write(cert_file, cert_crt) {
-            error!("cert file write failed: {}", err);
-        }
-
+        fs::write(&cert_file, cert_crt).context(format!("cert file  `{}` write failed:", cert_file))?;
         let private_key = cert.serialize_private_key_pem();
         debug!("{}\n{}", key_file, private_key);
-        if let Err(err) = fs::write(key_file, private_key) {
-            error!("private key file write failed: {}", err);
-        }
+        fs::write(&key_file, private_key).context(format!("private key file `{}` write failed:", key_file))?;
+        Ok(())
     }
     fn now_seconds() -> u64 {
         let start = SystemTime::now();
