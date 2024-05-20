@@ -375,6 +375,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.83"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25bdb32cbbdce2b519a9cd7df3a678443100e265d5e25ca763b7572a5104f5f3"
+
+[[package]]
 name = "askama_escape"
 version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1347,8 +1353,9 @@ dependencies = [
 
 [[package]]
 name = "inn-common"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
+ "anyhow",
  "env_logger",
  "http",
  "log",
